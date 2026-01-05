@@ -7,18 +7,14 @@ import {
   Layers,
   Download,
   Share2,
-  ZoomIn,
-  ZoomOut,
-  Maximize2,
   TreeDeciduous,
   MapPin,
   Upload,
-  ImageIcon,
   Map,
   CheckCircle2,
   ArrowRight,
 } from "lucide-react";
-import detectionPreview from "@/assets/detection-preview.jpg";
+import { InteractiveMap } from "@/components/map/InteractiveMap";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 
@@ -239,63 +235,10 @@ const PetaDigital = () => {
 
             {/* Main Map View */}
             <div className="grid gap-6 lg:grid-cols-4">
-              {/* Full Map */}
-              <div className="lg:col-span-3">
-                <div className="relative overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-                  <div className="relative aspect-[16/9] w-full overflow-hidden">
-                    <img
-                      src={detectionPreview}
-                      alt="Peta hasil deteksi"
-                      className="h-full w-full object-cover"
-                    />
-
-                    {/* Map Controls */}
-                    <div className="absolute right-4 top-4 flex flex-col gap-2">
-                      <Button
-                        size="icon"
-                        variant="secondary"
-                        className="h-10 w-10 bg-card/95 backdrop-blur-sm shadow-md"
-                      >
-                        <ZoomIn className="h-5 w-5" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="secondary"
-                        className="h-10 w-10 bg-card/95 backdrop-blur-sm shadow-md"
-                      >
-                        <ZoomOut className="h-5 w-5" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="secondary"
-                        className="h-10 w-10 bg-card/95 backdrop-blur-sm shadow-md"
-                      >
-                        <Maximize2 className="h-5 w-5" />
-                      </Button>
-                    </div>
-
-                    {/* Scale Bar */}
-                    <div className="absolute bottom-4 left-4 rounded-lg bg-card/95 backdrop-blur-sm p-3 shadow-md">
-                      <div className="flex items-center gap-2">
-                        <div className="h-1 w-24 rounded bg-foreground/80" />
-                        <span className="text-xs font-medium text-card-foreground">
-                          100m
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="border-t border-border bg-muted/30 px-4 py-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-4">
-                        <span>Skala 1:4.300</span>
-                        <span>WGS84 / UTM Zona 50S</span>
-                      </div>
-                      <span>Sumber: OpenDroneMap</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            {/* Full Map - Interactive */}
+            <div className="lg:col-span-3">
+              <InteractiveMap className="aspect-[16/9]" />
+            </div>
 
               {/* Sidebar */}
               <div className="space-y-4">

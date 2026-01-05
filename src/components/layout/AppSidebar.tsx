@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { useLocation, Link } from "react-router-dom";
+import { useLocation, Link, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Map,
@@ -19,6 +18,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useToast } from "@/hooks/use-toast";
 
 interface NavItem {
   icon: React.ElementType;
@@ -27,7 +27,7 @@ interface NavItem {
 }
 
 const mainNavItems: NavItem[] = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: Map, label: "Peta Digital", path: "/peta" },
   { icon: TreeDeciduous, label: "Deteksi Pohon", path: "/deteksi" },
   { icon: FileText, label: "Laporan", path: "/laporan" },
@@ -42,6 +42,17 @@ interface AppSidebarProps {
 
 export function AppSidebar({ isCollapsed, onToggle }: AppSidebarProps) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const handleLogout = () => {
+    localStorage.removeItem("duriancount_user");
+    toast({
+      title: "Berhasil keluar",
+      description: "Sampai jumpa kembali!",
+    });
+    navigate("/");
+  };
 
   return (
     <aside
@@ -52,7 +63,7 @@ export function AppSidebar({ isCollapsed, onToggle }: AppSidebarProps) {
     >
       {/* Logo Section */}
       <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
-        <Link to="/" className="flex items-center gap-3">
+        <Link to="/dashboard" className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary">
             <Leaf className="h-5 w-5 text-sidebar-primary-foreground" />
           </div>
@@ -126,7 +137,10 @@ export function AppSidebar({ isCollapsed, onToggle }: AppSidebarProps) {
         {isCollapsed ? (
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
-              <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-muted hover:bg-sidebar-accent hover:text-destructive transition-all duration-150">
+              <button
+                onClick={handleLogout}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-muted hover:bg-sidebar-accent hover:text-destructive transition-all duration-150"
+              >
                 <LogOut className="h-5 w-5" />
               </button>
             </TooltipTrigger>
@@ -135,7 +149,10 @@ export function AppSidebar({ isCollapsed, onToggle }: AppSidebarProps) {
             </TooltipContent>
           </Tooltip>
         ) : (
-          <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-muted hover:bg-sidebar-accent hover:text-destructive transition-all duration-150">
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-muted hover:bg-sidebar-accent hover:text-destructive transition-all duration-150"
+          >
             <LogOut className="h-5 w-5" />
             <span>Keluar</span>
           </button>
