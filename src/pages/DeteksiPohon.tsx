@@ -11,13 +11,11 @@ import {
   X,
   Map,
   FileText,
-  ZoomIn,
-  ZoomOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
-import detectionPreview from "@/assets/detection-preview.jpg";
+import { InteractiveMap } from "@/components/map/InteractiveMap";
 
 const DeteksiPohon = () => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -263,44 +261,8 @@ const DeteksiPohon = () => {
         {/* Results Section with Interactive Map Preview */}
         {currentStep === 3 && (
           <div className="space-y-6">
-            {/* Map Preview */}
-            <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-              <div className="relative aspect-[21/9] w-full overflow-hidden">
-                <img
-                  src={detectionPreview}
-                  alt="Hasil deteksi pohon durian"
-                  className="h-full w-full object-cover"
-                />
-
-                {/* Overlay Controls */}
-                <div className="absolute right-4 top-4 flex flex-col gap-2">
-                  <Button
-                    size="icon"
-                    variant="secondary"
-                    className="h-10 w-10 bg-card/95 backdrop-blur-sm shadow-md"
-                  >
-                    <ZoomIn className="h-5 w-5" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="secondary"
-                    className="h-10 w-10 bg-card/95 backdrop-blur-sm shadow-md"
-                  >
-                    <ZoomOut className="h-5 w-5" />
-                  </Button>
-                </div>
-
-                {/* Legend */}
-                <div className="absolute bottom-4 left-4 rounded-lg bg-card/95 backdrop-blur-sm p-3 shadow-md">
-                  <div className="flex items-center gap-2">
-                    <div className="h-3 w-3 rounded-full bg-primary" />
-                    <span className="text-xs font-medium text-card-foreground">
-                      Pohon Durian Terdeteksi
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            {/* Interactive Map Preview */}
+            <InteractiveMap className="aspect-[21/9]" />
 
             {/* Results Summary */}
             <div className="grid gap-4 sm:grid-cols-3">

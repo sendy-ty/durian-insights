@@ -3,6 +3,9 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
+import LandingPage from "./pages/LandingPage";
+import Daftar from "./pages/Daftar";
 import Dashboard from "./pages/Dashboard";
 import DeteksiPohon from "./pages/DeteksiPohon";
 import PetaDigital from "./pages/PetaDigital";
@@ -20,12 +23,59 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/deteksi" element={<DeteksiPohon />} />
-          <Route path="/peta" element={<PetaDigital />} />
-          <Route path="/laporan" element={<Laporan />} />
-          <Route path="/riwayat" element={<Riwayat />} />
-          <Route path="/pengaturan" element={<Pengaturan />} />
+          {/* Public routes */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/daftar" element={<Daftar />} />
+
+          {/* Protected routes */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/deteksi"
+            element={
+              <ProtectedRoute>
+                <DeteksiPohon />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/peta"
+            element={
+              <ProtectedRoute>
+                <PetaDigital />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/laporan"
+            element={
+              <ProtectedRoute>
+                <Laporan />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/riwayat"
+            element={
+              <ProtectedRoute>
+                <Riwayat />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pengaturan"
+            element={
+              <ProtectedRoute>
+                <Pengaturan />
+              </ProtectedRoute>
+            }
+          />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
