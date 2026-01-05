@@ -2,120 +2,90 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { DetectionChart } from "@/components/dashboard/DetectionChart";
 import { MapPreview } from "@/components/dashboard/MapPreview";
-import { WorkflowSteps } from "@/components/dashboard/WorkflowSteps";
 import { RecentDetections } from "@/components/dashboard/RecentDetections";
-import {
-  TreeDeciduous,
-  Activity,
-  Target,
-  Clock,
-  ArrowRight,
-  Upload,
-} from "lucide-react";
+import { TreeDeciduous, Target, MapPin, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 
 const Dashboard = () => {
   return (
     <DashboardLayout
-      title="Dashboard Overview"
-      description="Ringkasan hasil deteksi pohon durian menggunakan citra drone"
+      title="Dashboard"
+      description="Ringkasan hasil deteksi pohon durian"
     >
       <div className="space-y-6 animate-fade-in">
-        {/* Stats Grid */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Stats Grid - Simplified to 3 essential metrics */}
+        <div className="grid gap-4 sm:grid-cols-3">
           <StatCard
-            title="Total Pohon Terdeteksi"
+            title="Total Pohon"
             value="1,247"
-            subtitle="Deteksi pohon durian via citra drone"
+            subtitle="Terdeteksi dari citra drone"
             icon={TreeDeciduous}
             trend={{ value: 12.5, isPositive: true }}
           />
           <StatCard
-            title="Total Proses Deteksi"
-            value="24"
-            subtitle="Proses deteksi AI dilakukan"
-            icon={Activity}
-          />
-          <StatCard
-            title="Rata-rata Akurasi"
+            title="Akurasi Deteksi"
             value="93.4%"
-            subtitle="Tingkat akurasi model AI"
+            subtitle="Model YOLOv11"
             icon={Target}
-            trend={{ value: 2.3, isPositive: true }}
           />
           <StatCard
-            title="Deteksi Terakhir"
-            value="2 jam"
-            subtitle="16 November 2025"
-            icon={Clock}
+            title="Area Terpetakan"
+            value="45.2 Ha"
+            subtitle="6 lokasi kebun"
+            icon={MapPin}
           />
-        </div>
-
-        {/* Workflow Section */}
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-          <div className="mb-6 flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-card-foreground">
-                Proses Deteksi Pohon
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Alur kerja deteksi AI otomatis
-              </p>
-            </div>
-            <Button asChild>
-              <Link to="/deteksi">
-                <Upload className="mr-2 h-4 w-4" />
-                Mulai Deteksi Baru
-              </Link>
-            </Button>
-          </div>
-          <WorkflowSteps currentStep={1} completedSteps={[]} />
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-6 lg:grid-cols-5">
           {/* Chart Section */}
-          <div className="lg:col-span-2 rounded-xl border border-border bg-card p-6 shadow-sm">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-card-foreground">
-                  Tren Deteksi Pohon Durian
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Jumlah pohon terdeteksi per periode
-                </p>
-              </div>
+          <div className="lg:col-span-3 rounded-xl border border-border bg-card p-6 shadow-sm">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-card-foreground">
+                Tren Deteksi
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Jumlah pohon terdeteksi per periode
+              </p>
             </div>
             <DetectionChart />
           </div>
 
-          {/* Detection Results Summary */}
-          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+          {/* System Info */}
+          <div className="lg:col-span-2 rounded-xl border border-border bg-card p-6 shadow-sm">
             <h2 className="mb-4 text-lg font-semibold text-card-foreground">
-              Hasil Deteksi
+              Informasi Sistem
             </h2>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between rounded-lg bg-muted/50 p-4">
-                <span className="text-sm text-muted-foreground">
-                  Jumlah Pohon Durian
-                </span>
-                <span className="text-xl font-bold text-primary">1,247</span>
-              </div>
-              <div className="flex items-center justify-between rounded-lg bg-muted/50 p-4">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
                 <span className="text-sm text-muted-foreground">Model AI</span>
-                <span className="text-sm font-semibold text-card-foreground">
-                  YOLO (yolov8m)
+                <span className="text-sm font-medium text-card-foreground">
+                  YOLOv11
                 </span>
               </div>
-              <div className="flex items-center justify-between rounded-lg bg-muted/50 p-4">
+              <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
                 <span className="text-sm text-muted-foreground">
-                  Confidence
+                  Total Deteksi
                 </span>
-                <span className="text-sm font-semibold text-primary">
-                  93.4%
+                <span className="text-sm font-medium text-card-foreground">
+                  24 proses
                 </span>
               </div>
+              <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
+                <span className="text-sm text-muted-foreground">
+                  Deteksi Terakhir
+                </span>
+                <span className="text-sm font-medium text-card-foreground">
+                  16 Nov 2025
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-border">
+              <Button className="w-full" asChild>
+                <Link to="/deteksi">Mulai Deteksi Baru</Link>
+              </Button>
             </div>
           </div>
         </div>
@@ -127,10 +97,10 @@ const Dashboard = () => {
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">
-                  Preview Peta Digital
+                  Peta Terbaru
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  Visualisasi hasil deteksi pada peta
+                  Hasil deteksi pada peta digital
                 </p>
               </div>
               <Button variant="outline" size="sm" asChild>
@@ -148,10 +118,10 @@ const Dashboard = () => {
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">
-                  Deteksi Terbaru
+                  Riwayat Terbaru
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  Riwayat proses deteksi terakhir
+                  Proses deteksi terakhir
                 </p>
               </div>
               <Button variant="outline" size="sm" asChild>
@@ -163,13 +133,6 @@ const Dashboard = () => {
             </div>
             <RecentDetections />
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="border-t border-border pt-6 text-center">
-          <p className="text-sm text-muted-foreground">
-            Dikembangkan oleh Tim Capstone • Telkom University Purwokerto
-          </p>
         </div>
       </div>
     </DashboardLayout>
