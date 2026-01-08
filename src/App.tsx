@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import LandingPage from "./pages/LandingPage";
-import Daftar from "./pages/Daftar";
+
 import Dashboard from "./pages/Dashboard";
 import DeteksiPohon from "./pages/DeteksiPohon";
 import PetaDigital from "./pages/PetaDigital";
@@ -25,7 +25,6 @@ const App = () => (
         <Routes>
           {/* Public routes */}
           <Route path="/" element={<LandingPage />} />
-          <Route path="/daftar" element={<Daftar />} />
 
           {/* Protected routes */}
           <Route
