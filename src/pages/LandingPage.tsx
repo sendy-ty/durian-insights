@@ -4,32 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Map, Target, TreeDeciduous, FileText, Leaf, Eye, EyeOff } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Leaf, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-const features = [
-  {
-    icon: Map,
-    title: "Pemetaan Citra Drone",
-    description: "Pembuatan peta digital dari citra udara drone.",
-  },
-  {
-    icon: Target,
-    title: "Deteksi Pohon Durian",
-    description: "Identifikasi pohon durian berbasis AI dari peta digital.",
-  },
-  {
-    icon: TreeDeciduous,
-    title: "Perhitungan Pohon",
-    description: "Penghitungan jumlah pohon secara otomatis dan terukur.",
-  },
-  {
-    icon: FileText,
-    title: "Laporan Analisis",
-    description: "Penyajian hasil deteksi dalam bentuk data visual dan laporan.",
-  },
-];
+import durianOrchardBg from "@/assets/durian-orchard-hero.jpg";
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -71,16 +49,15 @@ const LandingPage = () => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simulate login check
     await new Promise((resolve) => setTimeout(resolve, 800));
 
     const storedUser = localStorage.getItem("duriancount_user");
     if (storedUser) {
       const user = JSON.parse(storedUser);
-      if (user.email === loginData.email) {
+      if (user.email === loginData.email && user.password === loginData.password) {
         toast({
           title: "Berhasil masuk",
-          description: `Selamat datang kembali, ${user.name}!`,
+          description: `Selamat datang kembali, ${user.name}.`,
         });
         navigate("/dashboard");
       } else {
@@ -124,15 +101,15 @@ const LandingPage = () => {
 
     setIsSubmitting(true);
 
-    // Simulate account creation
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    // Store user data in localStorage
+    // Store user data including password for login validation
     localStorage.setItem(
       "duriancount_user",
       JSON.stringify({
         name: registerData.name,
         email: registerData.email,
+        password: registerData.password,
         createdAt: new Date().toISOString(),
       })
     );
@@ -142,80 +119,78 @@ const LandingPage = () => {
       description: "Selamat datang di DurianCount.",
     });
 
-    // Redirect to dashboard
     navigate("/dashboard");
   };
 
+  const scrollToAuth = (tab: string) => {
+    setActiveTab(tab);
+    document.getElementById("auth-card")?.scrollIntoView({ behavior: "smooth" });
+  };
+
   return (
-    <div className="min-h-screen bg-background">
+    <div 
+      className="min-h-screen flex flex-col relative"
+      style={{
+        backgroundImage: `url(${durianOrchardBg})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundAttachment: "fixed",
+      }}
+    >
+      {/* Dark Overlay */}
+      <div className="absolute inset-0 bg-black/60" />
+
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/95 backdrop-blur-sm">
+      <header className="relative z-10 border-b border-white/10 bg-black/20 backdrop-blur-sm">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
               <Leaf className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-bold text-foreground">DurianCount</span>
+            <span className="text-xl font-bold text-white">DurianCount</span>
           </div>
           <div className="flex items-center gap-3">
             <Button 
               variant="ghost" 
-              onClick={() => setActiveTab("login")}
-              className="hidden sm:inline-flex"
+              onClick={() => scrollToAuth("login")}
+              className="text-white hover:bg-white/10 hover:text-white"
             >
               Masuk
             </Button>
-            <Button onClick={() => setActiveTab("register")}>
+            <Button 
+              onClick={() => scrollToAuth("register")}
+              className="bg-primary hover:bg-primary/90"
+            >
               Buat Akun
             </Button>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="pt-16">
-        <div className="container mx-auto px-4 py-12 lg:py-20">
-          <div className="grid gap-12 lg:grid-cols-2 lg:gap-16 items-center">
-            {/* Left: Title & Description */}
-            <div className="space-y-6">
-              <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
-                Analisis Pohon Durian Berbasis Citra Drone
+      {/* Main Content */}
+      <main className="relative z-10 flex-1 flex items-center">
+        <div className="container mx-auto px-4 py-8">
+          <div className="grid gap-8 lg:grid-cols-2 lg:gap-12 items-center">
+            {/* Left: Academic Title */}
+            <div className="space-y-4 text-center lg:text-left">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold tracking-tight text-white leading-tight">
+                APLIKASI WEBSITE
+                <br />
+                PENGHITUNG POHON DURIAN
+                <br />
+                OTOMATIS BERBASIS
+                <br />
+                <span className="text-primary">CITRA UDARA DAN MACHINE LEARNING</span>
               </h1>
-              <p className="text-lg text-muted-foreground leading-relaxed">
-                Platform analisis yang memanfaatkan citra drone untuk pemetaan dan deteksi pohon durian secara otomatis.
+              <p className="text-base lg:text-lg text-white/80 max-w-lg mx-auto lg:mx-0">
+                Sistem analisis otomatis untuk mendeteksi dan menghitung pohon durian menggunakan teknologi pemetaan citra drone dan algoritma machine learning.
               </p>
-              <div className="flex flex-wrap gap-3 pt-2">
-                <Button 
-                  size="lg" 
-                  onClick={() => setActiveTab("login")}
-                  variant="outline"
-                >
-                  Masuk ke Dashboard
-                </Button>
-                <Button 
-                  size="lg" 
-                  onClick={() => setActiveTab("register")}
-                >
-                  Buat Akun & Mulai Analisis
-                </Button>
-              </div>
             </div>
 
             {/* Right: Auth Card */}
-            <div className="w-full max-w-md mx-auto lg:mx-0 lg:ml-auto">
-              <Card className="border-border shadow-lg">
-                <CardHeader className="space-y-1 pb-4">
-                  <CardTitle className="text-xl text-center">
-                    {activeTab === "login" ? "Masuk ke Sistem" : "Buat Akun Baru"}
-                  </CardTitle>
-                  <CardDescription className="text-center">
-                    {activeTab === "login" 
-                      ? "Masukkan kredensial untuk melanjutkan" 
-                      : "Lengkapi data untuk membuat akun"
-                    }
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
+            <div id="auth-card" className="w-full max-w-md mx-auto lg:mx-0 lg:ml-auto">
+              <Card className="border-white/10 bg-card/95 backdrop-blur-md shadow-2xl">
+                <CardContent className="pt-6">
                   <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                     <TabsList className="grid w-full grid-cols-2 mb-6">
                       <TabsTrigger value="login">Masuk</TabsTrigger>
@@ -226,7 +201,7 @@ const LandingPage = () => {
                     <TabsContent value="login" className="space-y-4">
                       <form onSubmit={handleLogin} className="space-y-4">
                         <div className="space-y-2">
-                          <Label htmlFor="login-email">Email</Label>
+                          <Label htmlFor="login-email">Email atau Username</Label>
                           <Input
                             id="login-email"
                             name="email"
@@ -344,7 +319,7 @@ const LandingPage = () => {
                           </div>
                         </div>
                         <Button type="submit" className="w-full" disabled={isSubmitting}>
-                          {isSubmitting ? "Membuat akun..." : "Buat Akun & Lanjutkan"}
+                          {isSubmitting ? "Membuat akun..." : "Buat Akun"}
                         </Button>
                       </form>
                       <p className="text-sm text-center text-muted-foreground pt-2">
@@ -364,37 +339,13 @@ const LandingPage = () => {
             </div>
           </div>
         </div>
-      </section>
+      </main>
 
-      {/* Features Section */}
-      <section className="py-16 border-t border-border bg-muted/30">
+      {/* Minimal Footer */}
+      <footer className="relative z-10 py-4 border-t border-white/10 bg-black/20 backdrop-blur-sm">
         <div className="container mx-auto px-4">
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {features.map((feature) => (
-              <div
-                key={feature.title}
-                className="rounded-xl border border-border bg-card p-6 shadow-sm"
-              >
-                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                  <feature.icon className="h-5 w-5 text-primary" />
-                </div>
-                <h3 className="mb-2 text-base font-semibold text-card-foreground">
-                  {feature.title}
-                </h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {feature.description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="py-6 border-t border-border">
-        <div className="container mx-auto px-4">
-          <p className="text-center text-sm text-muted-foreground">
-            © {new Date().getFullYear()} DurianCount. Sistem analisis pohon durian berbasis citra drone.
+          <p className="text-center text-sm text-white/60">
+            © 2026 DurianCount · Sistem analisis pohon durian berbasis citra udara
           </p>
         </div>
       </footer>
