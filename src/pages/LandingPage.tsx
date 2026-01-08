@@ -53,17 +53,30 @@ const LandingPage = () => {
 
     const storedUser = localStorage.getItem("duriancount_user");
     if (storedUser) {
-      const user = JSON.parse(storedUser);
-      if (user.email === loginData.email && user.password === loginData.password) {
-        toast({
-          title: "Berhasil masuk",
-          description: `Selamat datang kembali, ${user.name}.`,
-        });
-        navigate("/dashboard");
-      } else {
+      try {
+        const user = JSON.parse(storedUser);
+        // Validate email/username and password
+        const emailMatch = user.email === loginData.email || user.name === loginData.email;
+        const passwordMatch = user.password === loginData.password;
+        
+        if (emailMatch && passwordMatch) {
+          localStorage.setItem("isLoggedIn", "true");
+          toast({
+            title: "Berhasil masuk",
+            description: `Selamat datang kembali, ${user.name}.`,
+          });
+          navigate("/dashboard");
+        } else {
+          toast({
+            title: "Gagal masuk",
+            description: "Email atau kata sandi tidak sesuai.",
+            variant: "destructive",
+          });
+        }
+      } catch {
         toast({
           title: "Gagal masuk",
-          description: "Email atau kata sandi tidak sesuai.",
+          description: "Terjadi kesalahan. Silakan coba lagi.",
           variant: "destructive",
         });
       }
@@ -113,12 +126,14 @@ const LandingPage = () => {
         createdAt: new Date().toISOString(),
       })
     );
+    localStorage.setItem("isLoggedIn", "true");
 
     toast({
       title: "Akun berhasil dibuat",
       description: "Selamat datang di DurianCount.",
     });
 
+    setIsSubmitting(false);
     navigate("/dashboard");
   };
 
@@ -129,7 +144,7 @@ const LandingPage = () => {
 
   return (
     <div 
-      className="min-h-screen flex flex-col relative"
+      className="min-h-screen flex flex-col relative overflow-hidden"
       style={{
         backgroundImage: `url(${durianOrchardBg})`,
         backgroundSize: "cover",
@@ -138,10 +153,10 @@ const LandingPage = () => {
       }}
     >
       {/* Dark Overlay */}
-      <div className="absolute inset-0 bg-black/60" />
+      <div className="absolute inset-0 bg-black/50" />
 
       {/* Header */}
-      <header className="relative z-10 border-b border-white/10 bg-black/20 backdrop-blur-sm">
+      <header className="relative z-10 border-b border-primary/20 bg-black/30 backdrop-blur-sm">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
@@ -153,13 +168,13 @@ const LandingPage = () => {
             <Button 
               variant="ghost" 
               onClick={() => scrollToAuth("login")}
-              className="text-white hover:bg-white/10 hover:text-white"
+              className="text-white/90 hover:bg-primary/20 hover:text-white border border-primary/30"
             >
               Masuk
             </Button>
             <Button 
               onClick={() => scrollToAuth("register")}
-              className="bg-primary hover:bg-primary/90"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               Buat Akun
             </Button>
@@ -172,48 +187,58 @@ const LandingPage = () => {
         <div className="container mx-auto px-4 py-8">
           <div className="grid gap-8 lg:grid-cols-2 lg:gap-12 items-center">
             {/* Left: Academic Title */}
-            <div className="space-y-4 text-center lg:text-left">
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold tracking-tight text-white leading-tight">
-                APLIKASI WEBSITE
-                <br />
-                PENGHITUNG POHON DURIAN
-                <br />
-                OTOMATIS BERBASIS
-                <br />
-                <span className="text-primary">CITRA UDARA DAN MACHINE LEARNING</span>
+            <div className="space-y-6 text-center lg:text-left">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold tracking-tight leading-tight">
+                <span className="text-white block">
+                  APLIKASI WEBSITE PENGHITUNG POHON DURIAN OTOMATIS
+                </span>
+                <span className="text-primary block mt-2">
+                  DARI CITRA UAV BERBASIS MACHINE LEARNING
+                </span>
               </h1>
-              <p className="text-base lg:text-lg text-white/80 max-w-lg mx-auto lg:mx-0">
-                Sistem analisis otomatis untuk mendeteksi dan menghitung pohon durian menggunakan teknologi pemetaan citra drone dan algoritma machine learning.
+              <p className="text-base lg:text-lg text-white/80 max-w-xl mx-auto lg:mx-0 leading-relaxed">
+                Sistem analisis berbasis web yang dirancang untuk mendeteksi dan menghitung pohon durian secara otomatis melalui pemanfaatan citra udara drone dan algoritma machine learning.
               </p>
             </div>
 
             {/* Right: Auth Card */}
             <div id="auth-card" className="w-full max-w-md mx-auto lg:mx-0 lg:ml-auto">
-              <Card className="border-white/10 bg-card/95 backdrop-blur-md shadow-2xl">
+              <Card className="border-primary/20 bg-black/40 backdrop-blur-md shadow-2xl">
                 <CardContent className="pt-6">
                   <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 mb-6">
-                      <TabsTrigger value="login">Masuk</TabsTrigger>
-                      <TabsTrigger value="register">Buat Akun</TabsTrigger>
+                    <TabsList className="grid w-full grid-cols-2 mb-6 bg-black/30 border border-primary/20">
+                      <TabsTrigger 
+                        value="login" 
+                        className="text-white/80 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                      >
+                        Masuk
+                      </TabsTrigger>
+                      <TabsTrigger 
+                        value="register"
+                        className="text-white/80 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                      >
+                        Buat Akun
+                      </TabsTrigger>
                     </TabsList>
 
                     {/* Login Tab */}
                     <TabsContent value="login" className="space-y-4">
                       <form onSubmit={handleLogin} className="space-y-4">
                         <div className="space-y-2">
-                          <Label htmlFor="login-email">Email atau Username</Label>
+                          <Label htmlFor="login-email" className="text-white/90">Email atau Username</Label>
                           <Input
                             id="login-email"
                             name="email"
-                            type="email"
+                            type="text"
                             placeholder="nama@contoh.com"
                             value={loginData.email}
                             onChange={handleLoginChange}
                             required
+                            className="bg-black/30 border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="login-password">Kata Sandi</Label>
+                          <Label htmlFor="login-password" className="text-white/90">Kata Sandi</Label>
                           <div className="relative">
                             <Input
                               id="login-password"
@@ -223,21 +248,26 @@ const LandingPage = () => {
                               value={loginData.password}
                               onChange={handleLoginChange}
                               required
+                              className="bg-black/30 border-primary/30 text-white placeholder:text-white/50 focus:border-primary pr-10"
                             />
                             <button
                               type="button"
                               onClick={() => setShowPassword(!showPassword)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors"
                             >
                               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                             </button>
                           </div>
                         </div>
-                        <Button type="submit" className="w-full" disabled={isSubmitting}>
+                        <Button 
+                          type="submit" 
+                          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" 
+                          disabled={isSubmitting}
+                        >
                           {isSubmitting ? "Memproses..." : "Masuk"}
                         </Button>
                       </form>
-                      <p className="text-sm text-center text-muted-foreground pt-2">
+                      <p className="text-sm text-center text-white/70 pt-2">
                         Belum memiliki akun?{" "}
                         <button
                           type="button"
@@ -253,7 +283,7 @@ const LandingPage = () => {
                     <TabsContent value="register" className="space-y-4">
                       <form onSubmit={handleRegister} className="space-y-4">
                         <div className="space-y-2">
-                          <Label htmlFor="register-name">Nama Lengkap</Label>
+                          <Label htmlFor="register-name" className="text-white/90">Nama Lengkap</Label>
                           <Input
                             id="register-name"
                             name="name"
@@ -262,10 +292,11 @@ const LandingPage = () => {
                             value={registerData.name}
                             onChange={handleRegisterChange}
                             required
+                            className="bg-black/30 border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="register-email">Email</Label>
+                          <Label htmlFor="register-email" className="text-white/90">Email</Label>
                           <Input
                             id="register-email"
                             name="email"
@@ -274,10 +305,11 @@ const LandingPage = () => {
                             value={registerData.email}
                             onChange={handleRegisterChange}
                             required
+                            className="bg-black/30 border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="register-password">Kata Sandi</Label>
+                          <Label htmlFor="register-password" className="text-white/90">Kata Sandi</Label>
                           <div className="relative">
                             <Input
                               id="register-password"
@@ -287,18 +319,19 @@ const LandingPage = () => {
                               value={registerData.password}
                               onChange={handleRegisterChange}
                               required
+                              className="bg-black/30 border-primary/30 text-white placeholder:text-white/50 focus:border-primary pr-10"
                             />
                             <button
                               type="button"
                               onClick={() => setShowPassword(!showPassword)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors"
                             >
                               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                             </button>
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="register-confirm">Konfirmasi Kata Sandi</Label>
+                          <Label htmlFor="register-confirm" className="text-white/90">Konfirmasi Kata Sandi</Label>
                           <div className="relative">
                             <Input
                               id="register-confirm"
@@ -308,21 +341,26 @@ const LandingPage = () => {
                               value={registerData.confirmPassword}
                               onChange={handleRegisterChange}
                               required
+                              className="bg-black/30 border-primary/30 text-white placeholder:text-white/50 focus:border-primary pr-10"
                             />
                             <button
                               type="button"
                               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors"
                             >
                               {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                             </button>
                           </div>
                         </div>
-                        <Button type="submit" className="w-full" disabled={isSubmitting}>
+                        <Button 
+                          type="submit" 
+                          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" 
+                          disabled={isSubmitting}
+                        >
                           {isSubmitting ? "Membuat akun..." : "Buat Akun"}
                         </Button>
                       </form>
-                      <p className="text-sm text-center text-muted-foreground pt-2">
+                      <p className="text-sm text-center text-white/70 pt-2">
                         Sudah memiliki akun?{" "}
                         <button
                           type="button"
@@ -342,11 +380,13 @@ const LandingPage = () => {
       </main>
 
       {/* Minimal Footer */}
-      <footer className="relative z-10 py-4 border-t border-white/10 bg-black/20 backdrop-blur-sm">
+      <footer className="relative z-10 py-4 border-t border-primary/20 bg-black/30 backdrop-blur-sm">
         <div className="container mx-auto px-4">
-          <p className="text-center text-sm text-white/60">
-            © 2026 DurianCount · Sistem analisis pohon durian berbasis citra udara
-          </p>
+          <div className="text-center text-sm text-white/70 space-y-1">
+            <p>© 2026 DurianCount</p>
+            <p>Dikembangkan oleh Tim Capstone</p>
+            <p>Telkom University Purwokerto</p>
+          </div>
         </div>
       </footer>
     </div>
