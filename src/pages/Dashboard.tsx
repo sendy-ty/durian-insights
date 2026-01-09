@@ -1,8 +1,6 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { DetectionChart } from "@/components/dashboard/DetectionChart";
-import { MapPreview } from "@/components/dashboard/MapPreview";
-import { RecentDetections } from "@/components/dashboard/RecentDetections";
 import { TreeDeciduous, Target, MapPin, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -13,9 +11,9 @@ const Dashboard = () => {
       title="Dashboard"
       description="Ringkasan hasil deteksi pohon durian"
     >
-      <div className="space-y-6 animate-fade-in">
-        {/* Stats Grid - Simplified to 3 essential metrics */}
-        <div className="grid gap-4 sm:grid-cols-3">
+      <div className="animate-fade-in h-[calc(100vh-8rem)] flex flex-col">
+        {/* Stats Grid - 3 essential metrics */}
+        <div className="grid gap-4 sm:grid-cols-3 mb-6">
           <StatCard
             title="Total Pohon"
             value="1,247"
@@ -37,10 +35,10 @@ const Dashboard = () => {
           />
         </div>
 
-        {/* Main Content Grid */}
-        <div className="grid gap-6 lg:grid-cols-5">
+        {/* Main Content Grid - flex-1 to fill remaining space */}
+        <div className="grid gap-6 lg:grid-cols-5 flex-1 min-h-0">
           {/* Chart Section */}
-          <div className="lg:col-span-3 rounded-xl border border-border bg-card p-6 shadow-sm">
+          <div className="lg:col-span-3 rounded-xl border border-border bg-card p-6 shadow-sm flex flex-col">
             <div className="mb-4">
               <h2 className="text-lg font-semibold text-card-foreground">
                 Tren Deteksi
@@ -49,15 +47,17 @@ const Dashboard = () => {
                 Jumlah pohon terdeteksi per periode
               </p>
             </div>
-            <DetectionChart />
+            <div className="flex-1 min-h-0">
+              <DetectionChart />
+            </div>
           </div>
 
           {/* System Info */}
-          <div className="lg:col-span-2 rounded-xl border border-border bg-card p-6 shadow-sm">
+          <div className="lg:col-span-2 rounded-xl border border-border bg-card p-6 shadow-sm flex flex-col">
             <h2 className="mb-4 text-lg font-semibold text-card-foreground">
               Informasi Sistem
             </h2>
-            <div className="space-y-3">
+            <div className="space-y-3 flex-1">
               <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
                 <span className="text-sm text-muted-foreground">Model AI</span>
                 <span className="text-sm font-medium text-card-foreground">
@@ -82,56 +82,20 @@ const Dashboard = () => {
               </div>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-border">
+            <div className="mt-6 pt-4 border-t border-border space-y-2">
               <Button className="w-full" asChild>
-                <Link to="/deteksi">Mulai Deteksi Baru</Link>
+                <Link to="/deteksi">
+                  Mulai Deteksi Baru
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
               </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Map Preview and Recent Detections */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Map Preview */}
-          <div>
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">
-                  Peta Terbaru
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Hasil deteksi pada peta digital
-                </p>
-              </div>
-              <Button variant="outline" size="sm" asChild>
+              <Button variant="outline" className="w-full" asChild>
                 <Link to="/peta">
-                  Lihat Peta
+                  Lihat Peta Digital
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
             </div>
-            <MapPreview />
-          </div>
-
-          {/* Recent Detections */}
-          <div>
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">
-                  Riwayat Terbaru
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Proses deteksi terakhir
-                </p>
-              </div>
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/riwayat">
-                  Lihat Semua
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-            <RecentDetections />
           </div>
         </div>
       </div>
