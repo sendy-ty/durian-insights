@@ -1,22 +1,23 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
-  Layers,
   Download,
-  Share2,
   TreeDeciduous,
   MapPin,
   Upload,
   Map,
   CheckCircle2,
   ArrowRight,
+  Folder,
+  FileImage,
 } from "lucide-react";
 import { InteractiveMap } from "@/components/map/InteractiveMap";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
+import { toast } from "@/hooks/use-toast";
 
 type MappingStep = "upload" | "processing" | "ready";
 
@@ -24,12 +25,29 @@ const PetaDigital = () => {
   const [mappingStep, setMappingStep] = useState<MappingStep>("upload");
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [processingProgress, setProcessingProgress] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
+
+  const acceptedFormats = ".jpg,.jpeg,.png,.zip";
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      setUploadedFiles(Array.from(files));
-      // Simulate processing
+      const validFiles = Array.from(files).filter((file) => {
+        const ext = file.name.toLowerCase().split(".").pop();
+        return ["jpg", "jpeg", "png", "zip"].includes(ext || "");
+      });
+
+      if (validFiles.length === 0) {
+        toast({
+          title: "Format tidak didukung",
+          description: "Gunakan format JPG, PNG, atau ZIP",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setUploadedFiles(validFiles);
       setMappingStep("processing");
       setProcessingProgress(0);
 
@@ -52,14 +70,21 @@ const PetaDigital = () => {
     setProcessingProgress(0);
   };
 
+  const handleDownload = () => {
+    toast({
+      title: "Download dimulai",
+      description: "Mengunduh peta digital dalam format TIFF...",
+    });
+  };
+
   return (
     <DashboardLayout
       title="Peta Digital"
       description="Buat dan lihat peta digital dari citra drone"
     >
-      <div className="space-y-6 animate-fade-in">
+      <div className="animate-fade-in h-[calc(100vh-8rem)] flex flex-col">
         {/* Workflow Steps */}
-        <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card p-4 shadow-sm">
+        <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card p-4 shadow-sm mb-6">
           <div
             className={cn(
               "flex items-center gap-2 px-4 py-2 rounded-lg transition-colors",
@@ -140,7 +165,7 @@ const PetaDigital = () => {
 
         {/* Upload Section */}
         {mappingStep === "upload" && (
-          <div className="rounded-xl border border-border bg-card p-8 shadow-sm">
+          <div className="rounded-xl border border-border bg-card p-8 shadow-sm flex-1 flex flex-col">
             <div className="text-center mb-6">
               <h2 className="text-xl font-semibold text-card-foreground mb-2">
                 Upload Citra Drone
@@ -150,28 +175,55 @@ const PetaDigital = () => {
               </p>
             </div>
 
-            <label className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-12 transition-colors cursor-pointer hover:border-primary/50 hover:bg-muted/50">
-              <input
-                type="file"
-                className="hidden"
-                accept="image/*,.zip"
-                multiple
-                onChange={handleFileUpload}
-              />
+            {/* Hidden inputs */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              accept={acceptedFormats}
+              multiple
+              onChange={handleFileUpload}
+            />
+            <input
+              ref={folderInputRef}
+              type="file"
+              className="hidden"
+              accept={acceptedFormats}
+              multiple
+              {...({ webkitdirectory: "true", directory: "true" } as any)}
+              onChange={handleFileUpload}
+            />
+
+            {/* Upload area */}
+            <div className="flex-1 flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-8 transition-colors hover:border-primary/50 hover:bg-muted/50">
               <Upload className="h-12 w-12 text-muted-foreground mb-4" />
               <p className="text-center font-medium text-card-foreground mb-2">
-                Pilih atau seret file ke sini
+                Pilih folder atau file citra drone
               </p>
-              <p className="text-sm text-muted-foreground">
-                Format: JPG, PNG, TIFF (beberapa file direkomendasikan)
+              <p className="text-sm text-muted-foreground mb-6">
+                Format: JPG, PNG, ZIP
               </p>
-            </label>
+
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => folderInputRef.current?.click()}
+                >
+                  <Folder className="mr-2 h-4 w-4" />
+                  Pilih Folder
+                </Button>
+                <Button onClick={() => fileInputRef.current?.click()}>
+                  <FileImage className="mr-2 h-4 w-4" />
+                  Pilih File
+                </Button>
+              </div>
+            </div>
           </div>
         )}
 
         {/* Processing Section */}
         {mappingStep === "processing" && (
-          <div className="rounded-xl border border-border bg-card p-8 shadow-sm">
+          <div className="rounded-xl border border-border bg-card p-8 shadow-sm flex-1 flex flex-col items-center justify-center">
             <div className="text-center mb-6">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mx-auto mb-4">
                 <Map className="h-8 w-8 text-primary animate-pulse" />
@@ -184,7 +236,7 @@ const PetaDigital = () => {
               </p>
             </div>
 
-            <div className="max-w-md mx-auto space-y-2">
+            <div className="w-full max-w-md space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">
                   Memproses citra...
@@ -200,9 +252,9 @@ const PetaDigital = () => {
 
         {/* Map Ready Section */}
         {mappingStep === "ready" && (
-          <>
+          <div className="flex-1 flex flex-col min-h-0">
             {/* Map Controls Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-4 shadow-sm mb-4">
               <div className="flex items-center gap-2">
                 <Badge variant="secondary">
                   <MapPin className="mr-1 h-3 w-3" />
@@ -214,96 +266,28 @@ const PetaDigital = () => {
                 </Badge>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm">
-                  <Layers className="mr-2 h-4 w-4" />
-                  Layer
-                </Button>
-                <Button variant="outline" size="sm">
-                  <Share2 className="mr-2 h-4 w-4" />
-                  Bagikan
-                </Button>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={handleDownload}>
                   <Download className="mr-2 h-4 w-4" />
-                  Ekspor
+                  Download Peta
                 </Button>
                 <Button variant="outline" size="sm" onClick={resetUpload}>
                   <Upload className="mr-2 h-4 w-4" />
                   Upload Baru
                 </Button>
-              </div>
-            </div>
-
-            {/* Main Map View */}
-            <div className="grid gap-6 lg:grid-cols-4">
-            {/* Full Map - Interactive */}
-            <div className="lg:col-span-3">
-              <InteractiveMap className="aspect-[16/9]" />
-            </div>
-
-              {/* Sidebar */}
-              <div className="space-y-4">
-                {/* Legend */}
-                <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-                  <h3 className="mb-4 font-semibold text-card-foreground">
-                    Legenda
-                  </h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <div className="h-4 w-4 rounded-full bg-primary" />
-                      <span className="text-sm text-card-foreground">
-                        Pohon Durian
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="h-4 w-4 rounded border-2 border-primary/50 bg-primary/20" />
-                      <span className="text-sm text-card-foreground">
-                        Area Deteksi
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Detection Stats */}
-                <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-                  <h3 className="mb-4 font-semibold text-card-foreground">
-                    Ringkasan
-                  </h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        Pohon
-                      </span>
-                      <span className="font-semibold text-primary">1,247</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        Luas
-                      </span>
-                      <span className="font-medium text-card-foreground">
-                        45.2 Ha
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        Kepadatan
-                      </span>
-                      <span className="font-medium text-card-foreground">
-                        27.6/Ha
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* CTA */}
-                <Button className="w-full" asChild>
+                <Button size="sm" asChild>
                   <Link to="/deteksi">
-                    Lanjut ke Deteksi Pohon
+                    Lanjut ke Deteksi
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
               </div>
             </div>
-          </>
+
+            {/* Full Map View - No sidebar */}
+            <div className="flex-1 min-h-0 rounded-xl overflow-hidden border border-border">
+              <InteractiveMap className="h-full w-full" />
+            </div>
+          </div>
         )}
       </div>
     </DashboardLayout>

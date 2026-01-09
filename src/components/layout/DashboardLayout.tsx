@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { AppSidebar } from "./AppSidebar";
 import { cn } from "@/lib/utils";
-import { Menu, Bell, User } from "lucide-react";
+import { Menu, Bell, User, Settings, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -25,9 +26,16 @@ export function DashboardLayout({
   title,
   description,
 }: DashboardLayoutProps) {
+  const navigate = useNavigate();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleLogout = () => {
+    localStorage.removeItem("duriancount_user");
+    localStorage.removeItem("duriancount_authenticated");
+    navigate("/");
+  };
 
   useEffect(() => {
     const checkMobile = () => {
@@ -133,13 +141,24 @@ export function DashboardLayout({
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>Akun Saya</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <User className="mr-2 h-4 w-4" />
-                  Profil
+                <DropdownMenuItem asChild>
+                  <Link to="/pengaturan" className="flex items-center cursor-pointer">
+                    <User className="mr-2 h-4 w-4" />
+                    Profil
+                  </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem>Pengaturan</DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/pengaturan" className="flex items-center cursor-pointer">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Pengaturan
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive">
+                <DropdownMenuItem 
+                  onClick={handleLogout}
+                  className="text-destructive cursor-pointer"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
                   Keluar
                 </DropdownMenuItem>
               </DropdownMenuContent>
