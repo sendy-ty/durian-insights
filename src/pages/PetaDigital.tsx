@@ -1,12 +1,9 @@
 import { useState, useRef } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
   Download,
-  TreeDeciduous,
-  MapPin,
   Upload,
   Map,
   CheckCircle2,
@@ -28,20 +25,21 @@ const PetaDigital = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
-  const acceptedFormats = ".jpg,.jpeg,.png,.zip";
+  // Only JPG, PNG - removed ZIP per requirements
+  const acceptedFormats = ".jpg,.jpeg,.png";
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
       const validFiles = Array.from(files).filter((file) => {
         const ext = file.name.toLowerCase().split(".").pop();
-        return ["jpg", "jpeg", "png", "zip"].includes(ext || "");
+        return ["jpg", "jpeg", "png"].includes(ext || "");
       });
 
       if (validFiles.length === 0) {
         toast({
           title: "Format tidak didukung",
-          description: "Gunakan format JPG, PNG, atau ZIP",
+          description: "Gunakan format JPG atau PNG",
           variant: "destructive",
         });
         return;
@@ -201,7 +199,7 @@ const PetaDigital = () => {
                 Pilih folder atau file citra drone
               </p>
               <p className="text-sm text-muted-foreground mb-6">
-                Format: JPG, PNG, ZIP
+                Format: JPG, PNG
               </p>
 
               <div className="flex gap-3">
@@ -250,40 +248,28 @@ const PetaDigital = () => {
           </div>
         )}
 
-        {/* Map Ready Section */}
+        {/* Map Ready Section - SIMPLIFIED: removed coordinates, tree count, legend */}
         {mappingStep === "ready" && (
           <div className="flex-1 flex flex-col min-h-0">
-            {/* Map Controls Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-4 shadow-sm mb-4">
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary">
-                  <MapPin className="mr-1 h-3 w-3" />
-                  -7.4231°, 109.2378°
-                </Badge>
-                <Badge variant="secondary">
-                  <TreeDeciduous className="mr-1 h-3 w-3" />
-                  1,247 pohon
-                </Badge>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={handleDownload}>
-                  <Download className="mr-2 h-4 w-4" />
-                  Download Peta
-                </Button>
-                <Button variant="outline" size="sm" onClick={resetUpload}>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Upload Baru
-                </Button>
-                <Button size="sm" asChild>
-                  <Link to="/deteksi">
-                    Lanjut ke Deteksi
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-              </div>
+            {/* Map Controls Bar - Only action buttons */}
+            <div className="flex items-center justify-end gap-2 rounded-xl border border-border bg-card p-4 shadow-sm mb-4">
+              <Button variant="outline" size="sm" onClick={handleDownload}>
+                <Download className="mr-2 h-4 w-4" />
+                Download Peta
+              </Button>
+              <Button variant="outline" size="sm" onClick={resetUpload}>
+                <Upload className="mr-2 h-4 w-4" />
+                Upload Baru
+              </Button>
+              <Button size="sm" asChild>
+                <Link to="/deteksi">
+                  Lanjut ke Deteksi
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
             </div>
 
-            {/* Full Map View - No sidebar */}
+            {/* Full Map View - Clean, no sidebar or info panels */}
             <div className="flex-1 min-h-0 rounded-xl overflow-hidden border border-border">
               <InteractiveMap className="h-full w-full" />
             </div>
