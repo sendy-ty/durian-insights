@@ -190,14 +190,14 @@ const LandingPage = () => {
             <div className="space-y-6 text-center lg:text-left">
               <h1 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold tracking-tight leading-tight">
                 <span className="text-white block">
-                  APLIKASI WEBSITE PENGHITUNG POHON DURIAN OTOMATIS
+                  Aplikasi Web Penghitungan Pohon Durian Otomatis
                 </span>
-                <span className="text-primary block mt-2">
-                  DARI CITRA UAV BERBASIS MACHINE LEARNING
+                <span className="text-primary/80 block mt-2">
+                  Berbasis Citra UAV dan Machine Learning
                 </span>
               </h1>
               <p className="text-base lg:text-lg text-white/80 max-w-xl mx-auto lg:mx-0 leading-relaxed">
-                Sistem analisis berbasis web yang dirancang untuk mendeteksi dan menghitung pohon durian secara otomatis melalui pemanfaatan citra udara drone dan algoritma machine learning.
+                Platform berbasis web untuk mendeteksi dan menghitung pohon durian secara otomatis melalui citra udara drone dengan dukungan algoritma machine learning.
               </p>
             </div>
 
@@ -384,8 +384,7 @@ const LandingPage = () => {
         <div className="container mx-auto px-4">
           <div className="text-center text-sm text-white/70 space-y-1">
             <p>© 2026 DurianCount</p>
-            <p>Dikembangkan oleh Tim Capstone</p>
-            <p>Telkom University Purwokerto</p>
+            <p>Dikembangkan oleh Tim Capstone, Telkom University Purwokerto</p>
           </div>
         </div>
       </footer>

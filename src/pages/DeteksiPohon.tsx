@@ -17,6 +17,13 @@ import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { InteractiveMap } from "@/components/map/InteractiveMap";
 
+interface DetectionResult {
+  trees: number;
+  accuracy: number;
+  timestamp: string;
+  filename: string;
+}
+
 const DeteksiPohon = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -24,12 +31,24 @@ const DeteksiPohon = () => {
   const [isDetecting, setIsDetecting] = useState(false);
   const [detectionProgress, setDetectionProgress] = useState(0);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [detectionResult, setDetectionResult] = useState<DetectionResult | null>(null);
   const { toast } = useToast();
 
   const handleFileUpload = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) {
+        // Validate file format - only JPG, PNG, TIFF (no ZIP)
+        const ext = file.name.toLowerCase().split(".").pop();
+        if (!["jpg", "jpeg", "png", "tiff", "tif"].includes(ext || "")) {
+          toast({
+            title: "Format tidak didukung",
+            description: "Gunakan format JPG, PNG, atau TIFF",
+            variant: "destructive",
+          });
+          return;
+        }
+
         setUploadedFile(file);
         setIsUploading(true);
         setUploadProgress(0);
@@ -64,9 +83,39 @@ const DeteksiPohon = () => {
           clearInterval(interval);
           setIsDetecting(false);
           setCurrentStep(3);
+
+          // Create detection result
+          const result: DetectionResult = {
+            trees: Math.floor(Math.random() * 500) + 800, // Random 800-1300
+            accuracy: Math.round((Math.random() * 5 + 90) * 10) / 10, // 90-95%
+            timestamp: new Date().toISOString(),
+            filename: uploadedFile?.name || "unknown",
+          };
+          setDetectionResult(result);
+
+          // Save to history
+          const history = JSON.parse(localStorage.getItem("duriancount_history") || "[]");
+          const newEntry = {
+            id: `DET-${String(history.length + 1).padStart(3, "0")}`,
+            date: new Date().toLocaleDateString("id-ID", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            }),
+            filename: result.filename,
+            trees: result.trees,
+            accuracy: result.accuracy,
+            status: "selesai" as const,
+          };
+          history.unshift(newEntry);
+          localStorage.setItem("duriancount_history", JSON.stringify(history));
+
+          // Save last detection for report
+          localStorage.setItem("duriancount_last_detection", JSON.stringify(result));
+
           toast({
             title: "Deteksi selesai",
-            description: "1,247 pohon durian terdeteksi",
+            description: `${result.trees} pohon durian terdeteksi`,
           });
           return 100;
         }
@@ -80,6 +129,7 @@ const DeteksiPohon = () => {
     setUploadProgress(0);
     setDetectionProgress(0);
     setUploadedFile(null);
+    setDetectionResult(null);
   };
 
   return (
@@ -181,7 +231,7 @@ const DeteksiPohon = () => {
               <input
                 type="file"
                 className="hidden"
-                accept="image/*,.zip,.tiff"
+                accept=".jpg,.jpeg,.png,.tiff,.tif"
                 onChange={handleFileUpload}
                 disabled={isUploading}
               />
@@ -202,7 +252,7 @@ const DeteksiPohon = () => {
                     Pilih atau seret file ke sini
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Format: JPG, PNG, TIFF, ZIP (maks 500MB)
+                    Format: JPG, PNG, TIFF (maks 500MB)
                   </p>
                 </>
               )}
@@ -259,7 +309,7 @@ const DeteksiPohon = () => {
         )}
 
         {/* Results Section with Interactive Map Preview */}
-        {currentStep === 3 && (
+        {currentStep === 3 && detectionResult && (
           <div className="space-y-6">
             {/* Interactive Map Preview */}
             <InteractiveMap className="aspect-[21/9]" />
@@ -267,12 +317,14 @@ const DeteksiPohon = () => {
             {/* Results Summary */}
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="rounded-xl border border-border bg-card p-6 shadow-sm text-center">
-                <p className="text-3xl font-bold text-primary mb-1">1,247</p>
+                <p className="text-3xl font-bold text-primary mb-1">
+                  {detectionResult.trees.toLocaleString()}
+                </p>
                 <p className="text-sm text-muted-foreground">Pohon Terdeteksi</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-6 shadow-sm text-center">
                 <p className="text-3xl font-bold text-card-foreground mb-1">
-                  93.4%
+                  {detectionResult.accuracy}%
                 </p>
                 <p className="text-sm text-muted-foreground">Akurasi</p>
               </div>
