@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   Menu,
   Leaf,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
+import { useLogout } from "@/hooks/useAuth";
 
 interface NavItem {
   icon: React.ElementType;
@@ -44,15 +46,38 @@ export function AppSidebar({ isCollapsed, onToggle }: AppSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const logoutMutation = useLogout();
 
-  const handleLogout = () => {
-    localStorage.removeItem("duriancount_user");
-    toast({
-      title: "Berhasil keluar",
-      description: "Sampai jumpa kembali!",
-    });
-    navigate("/");
+  const handleLogout = async () => {
+    try {
+      await logoutMutation.mutateAsync();
+      localStorage.removeItem("duriancount_user");
+      toast({
+        title: "Berhasil keluar",
+        description: "Sampai jumpa kembali!",
+      });
+      navigate("/");
+    } catch {
+      // Even if the API call fails, clear local state and redirect
+      localStorage.removeItem("duriancount_user");
+      navigate("/");
+    }
   };
+
+  const logoutButton = (
+    <button
+      onClick={handleLogout}
+      disabled={logoutMutation.isPending}
+      className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-muted hover:bg-sidebar-accent hover:text-destructive transition-all duration-150 disabled:opacity-50"
+    >
+      {logoutMutation.isPending ? (
+        <Loader2 className="h-5 w-5 animate-spin" />
+      ) : (
+        <LogOut className="h-5 w-5" />
+      )}
+      {!isCollapsed && <span>{logoutMutation.isPending ? "Keluar..." : "Keluar"}</span>}
+    </button>
+  );
 
   return (
     <aside
@@ -137,25 +162,14 @@ export function AppSidebar({ isCollapsed, onToggle }: AppSidebarProps) {
         {isCollapsed ? (
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
-              <button
-                onClick={handleLogout}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-muted hover:bg-sidebar-accent hover:text-destructive transition-all duration-150"
-              >
-                <LogOut className="h-5 w-5" />
-              </button>
+              {logoutButton}
             </TooltipTrigger>
             <TooltipContent side="right" className="font-medium">
               Keluar
             </TooltipContent>
           </Tooltip>
         ) : (
-          <button
-            onClick={handleLogout}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-muted hover:bg-sidebar-accent hover:text-destructive transition-all duration-150"
-          >
-            <LogOut className="h-5 w-5" />
-            <span>Keluar</span>
-          </button>
+          logoutButton
         )}
       </div>
     </aside>

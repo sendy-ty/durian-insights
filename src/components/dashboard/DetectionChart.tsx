@@ -8,7 +8,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-const data = [
+const defaultData = [
   { month: "Jan", pohon: 890 },
   { month: "Feb", pohon: 1020 },
   { month: "Mar", pohon: 1150 },
@@ -17,12 +17,22 @@ const data = [
   { month: "Jun", pohon: 1320 },
 ];
 
-export function DetectionChart() {
+interface DetectionChartProps {
+  /** Optional trend data from the backend. Falls back to sample data if not provided. */
+  data?: Array<{ period: string; count: number }>;
+}
+
+export function DetectionChart({ data }: DetectionChartProps) {
+  // Map backend shape { period, count } to chart shape { month, pohon }
+  const chartData = data && data.length > 0
+    ? data.map((d) => ({ month: d.period, pohon: d.count }))
+    : defaultData;
+
   return (
     <div className="h-[300px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart
-          data={data}
+          data={chartData}
           margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
         >
           <defs>

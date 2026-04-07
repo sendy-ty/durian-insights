@@ -7,15 +7,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Leaf, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useLogin, useRegister } from "@/hooks/useAuth";
+import { getApiErrorMessage } from "@/api/client";
 import durianOrchardBg from "@/assets/durian-orchard-hero.jpg";
 
 const LandingPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("login");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const loginMutation = useLogin();
+  const registerMutation = useRegister();
 
   // Login form state
   const [loginData, setLoginData] = useState({
@@ -47,54 +51,54 @@ const LandingPage = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
 
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    try {
+      const data = await loginMutation.mutateAsync({
+        username: loginData.email,
+        password: loginData.password,
+      });
 
-    const storedUser = localStorage.getItem("duriancount_user");
-    if (storedUser) {
-      try {
-        const user = JSON.parse(storedUser);
-        // Validate email/username and password
-        const emailMatch = user.email === loginData.email || user.name === loginData.email;
-        const passwordMatch = user.password === loginData.password;
-        
-        if (emailMatch && passwordMatch) {
-          localStorage.setItem("isLoggedIn", "true");
-          toast({
-            title: "Berhasil masuk",
-            description: `Selamat datang kembali, ${user.name}.`,
-          });
-          navigate("/dashboard");
-        } else {
-          toast({
-            title: "Gagal masuk",
-            description: "Email atau kata sandi tidak sesuai.",
-            variant: "destructive",
-          });
-        }
-      } catch {
-        toast({
-          title: "Gagal masuk",
-          description: "Terjadi kesalahan. Silakan coba lagi.",
-          variant: "destructive",
-        });
-      }
-    } else {
+      // Also persist to localStorage for sidebar display compatibility
+      localStorage.setItem(
+        "duriancount_user",
+        JSON.stringify({
+          name: data.user?.name,
+          email: data.user?.email,
+          createdAt: data.user?.created_at,
+        })
+      );
+
       toast({
-        title: "Akun tidak ditemukan",
-        description: "Silakan buat akun terlebih dahulu.",
+        title: "Berhasil masuk",
+        description: `Selamat datang kembali, ${data.user?.name || "Pengguna"}.`,
+      });
+      navigate("/dashboard");
+    } catch (err) {
+      toast({
+        title: "Gagal masuk",
+        description: getApiErrorMessage(err),
         variant: "destructive",
       });
     }
-
-    setIsSubmitting(false);
   };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (registerData.password !== registerData.confirmPassword) {
+    const fullName = registerData.name?.trim() || "";
+    const email = registerData.email?.trim() || "";
+    const password = registerData.password || "";
+
+    if (!fullName || !email || !password) {
+      toast({
+        title: "Data tidak lengkap",
+        description: "Semua kolom wajib diisi.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (password !== registerData.confirmPassword) {
       toast({
         title: "Kata sandi tidak cocok",
         description: "Pastikan konfirmasi kata sandi sesuai.",
@@ -103,7 +107,7 @@ const LandingPage = () => {
       return;
     }
 
-    if (registerData.password.length < 6) {
+    if (password.length < 6) {
       toast({
         title: "Kata sandi terlalu pendek",
         description: "Kata sandi minimal 6 karakter.",
@@ -112,35 +116,47 @@ const LandingPage = () => {
       return;
     }
 
-    setIsSubmitting(true);
+    const payload = {
+      username: fullName,
+      email: email,
+      password: password,
+    };
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    console.log("Register payload:", payload);
 
-    // Store user data including password for login validation
-    localStorage.setItem(
-      "duriancount_user",
-      JSON.stringify({
-        name: registerData.name,
-        email: registerData.email,
-        password: registerData.password,
-        createdAt: new Date().toISOString(),
-      })
-    );
-    localStorage.setItem("isLoggedIn", "true");
+    try {
+      const data = await registerMutation.mutateAsync(payload);
 
-    toast({
-      title: "Akun berhasil dibuat",
-      description: "Selamat datang di DurianCount.",
-    });
+      // Persist for sidebar display compatibility
+      localStorage.setItem(
+        "duriancount_user",
+        JSON.stringify({
+          name: data.user?.name,
+          email: data.user?.email,
+          createdAt: data.user?.created_at,
+        })
+      );
 
-    setIsSubmitting(false);
-    navigate("/dashboard");
+      toast({
+        title: "Akun berhasil dibuat",
+        description: "Selamat datang di DurianCount.",
+      });
+      navigate("/dashboard");
+    } catch (err) {
+      toast({
+        title: "Gagal membuat akun",
+        description: getApiErrorMessage(err),
+        variant: "destructive",
+      });
+    }
   };
 
   const scrollToAuth = (tab: string) => {
     setActiveTab(tab);
     document.getElementById("auth-card")?.scrollIntoView({ behavior: "smooth" });
   };
+
+  const isSubmitting = loginMutation.isPending || registerMutation.isPending;
 
   return (
     <div 
@@ -264,7 +280,7 @@ const LandingPage = () => {
                           className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" 
                           disabled={isSubmitting}
                         >
-                          {isSubmitting ? "Memproses..." : "Masuk"}
+                          {loginMutation.isPending ? "Memproses..." : "Masuk"}
                         </Button>
                       </form>
                       <p className="text-sm text-center text-white/70 pt-2">
@@ -357,7 +373,7 @@ const LandingPage = () => {
                           className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" 
                           disabled={isSubmitting}
                         >
-                          {isSubmitting ? "Membuat akun..." : "Buat Akun"}
+                          {registerMutation.isPending ? "Membuat akun..." : "Buat Akun"}
                         </Button>
                       </form>
                       <p className="text-sm text-center text-white/70 pt-2">

@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { useCurrentUser, useLogout } from "@/hooks/useAuth";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -31,10 +32,26 @@ export function DashboardLayout({
   const [isMobile, setIsMobile] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const handleLogout = () => {
-    localStorage.removeItem("duriancount_user");
-    localStorage.removeItem("duriancount_authenticated");
-    navigate("/");
+  const { data: user } = useCurrentUser();
+  const logoutMutation = useLogout();
+
+  const userName = user?.name || "Pengguna";
+  const userInitials = userName
+    .split(" ")
+    .map((n: string) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
+  const handleLogout = async () => {
+    try {
+      await logoutMutation.mutateAsync();
+      localStorage.removeItem("duriancount_user");
+      navigate("/");
+    } catch {
+      localStorage.removeItem("duriancount_user");
+      navigate("/");
+    }
   };
 
   useEffect(() => {
@@ -130,11 +147,11 @@ export function DashboardLayout({
                 >
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-                      SY
+                      {userInitials}
                     </AvatarFallback>
                   </Avatar>
                   <span className="hidden md:inline-block text-sm font-medium">
-                    Sandy
+                    {userName}
                   </span>
                 </Button>
               </DropdownMenuTrigger>
@@ -157,9 +174,10 @@ export function DashboardLayout({
                 <DropdownMenuItem 
                   onClick={handleLogout}
                   className="text-destructive cursor-pointer"
+                  disabled={logoutMutation.isPending}
                 >
                   <LogOut className="mr-2 h-4 w-4" />
-                  Keluar
+                  {logoutMutation.isPending ? "Keluar..." : "Keluar"}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

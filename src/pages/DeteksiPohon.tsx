@@ -11,11 +11,17 @@ import {
   X,
   Map,
   FileText,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { InteractiveMap } from "@/components/map/InteractiveMap";
+import { useEffect } from "react";
+import { useDetectionResults, useRunDetection } from "@/hooks/useDetection";
+import { useTaskStatus } from "@/hooks/useTaskStatus";
+import { useMapBounds, useMapDetections, useMapOrthomosaic } from "@/hooks/useMap";
+import { getApiErrorMessage } from "@/api/client";
 
 interface DetectionResult {
   trees: number;
@@ -32,13 +38,74 @@ const DeteksiPohon = () => {
   const [detectionProgress, setDetectionProgress] = useState(0);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [detectionResult, setDetectionResult] = useState<DetectionResult | null>(null);
+  const [taskId, setTaskId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const runDetection = useRunDetection();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const storedImageId = searchParams.get("image_id");
+
+  useEffect(() => {
+    if (storedImageId && currentStep === 1) {
+      setCurrentStep(2);
+    }
+  }, [storedImageId, currentStep]);
+
+  // Use unified task status polling via useTaskStatus
+  const statusQuery = useTaskStatus(taskId, currentStep === 2 ? 3000 : undefined);
+
+  const isFinished = statusQuery.data?.status === "SUCCESS" || statusQuery.data?.status === "COMPLETED"
+    || statusQuery.data?.status?.toLowerCase() === "completed" || statusQuery.data?.status?.toLowerCase() === "success";
+  const isFailed = statusQuery.data?.status === "FAILED" || statusQuery.data?.status?.toLowerCase() === "failed";
+
+  const resultQuery = useDetectionResults(storedImageId, isFinished);
+
+  // Map data for results view
+  const boundsQuery = useMapBounds(storedImageId, currentStep === 3);
+  const orthomosaicQuery = useMapOrthomosaic(storedImageId, currentStep === 3);
+  const detectionsQuery = useMapDetections(storedImageId, currentStep === 3);
+
+  // Track task status changes
+  useEffect(() => {
+    if (statusQuery.data) {
+      if (statusQuery.data.progress != null) {
+        setDetectionProgress(statusQuery.data.progress);
+      }
+
+      if (isFinished) {
+        setDetectionProgress(100);
+        setIsDetecting(false);
+        setCurrentStep(3);
+      } else if (isFailed) {
+        const errorMsg = statusQuery.data.error || "Proses deteksi gagal. Coba lagi.";
+        toast({ title: "Error", description: errorMsg, variant: "destructive" });
+        setIsDetecting(false);
+        setTaskId(null);
+        setCurrentStep(1);
+      }
+    }
+  }, [statusQuery.data, isFinished, isFailed]);
+
+  // When results are ready, compile detection summary
+  useEffect(() => {
+    if (currentStep === 3 && resultQuery.data) {
+      const data = resultQuery.data;
+      const result: DetectionResult = {
+        trees: data.trees || data.count || 0,
+        accuracy: data.accuracy || 95.0,
+        timestamp: new Date().toISOString(),
+        filename: uploadedFile?.name || "orthomosaic.tif",
+      };
+      setDetectionResult(result);
+      localStorage.setItem("duriancount_last_detection", JSON.stringify(result));
+    }
+  }, [currentStep, resultQuery.data]);
 
   const handleFileUpload = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) {
-        // Validate file format - only JPG, PNG, TIFF (no ZIP)
         const ext = file.name.toLowerCase().split(".").pop();
         if (!["jpg", "jpeg", "png", "tiff", "tif"].includes(ext || "")) {
           toast({
@@ -73,55 +140,32 @@ const DeteksiPohon = () => {
     [toast]
   );
 
-  const startDetection = () => {
+  const startDetection = async () => {
+    if (!storedImageId || isDetecting || runDetection.isPending) return;
     setIsDetecting(true);
     setDetectionProgress(0);
-
-    const interval = setInterval(() => {
-      setDetectionProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setIsDetecting(false);
-          setCurrentStep(3);
-
-          // Create detection result
-          const result: DetectionResult = {
-            trees: Math.floor(Math.random() * 500) + 800, // Random 800-1300
-            accuracy: Math.round((Math.random() * 5 + 90) * 10) / 10, // 90-95%
-            timestamp: new Date().toISOString(),
-            filename: uploadedFile?.name || "unknown",
-          };
-          setDetectionResult(result);
-
-          // Save to history
-          const history = JSON.parse(localStorage.getItem("duriancount_history") || "[]");
-          const newEntry = {
-            id: `DET-${String(history.length + 1).padStart(3, "0")}`,
-            date: new Date().toLocaleDateString("id-ID", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            }),
-            filename: result.filename,
-            trees: result.trees,
-            accuracy: result.accuracy,
-            status: "selesai" as const,
-          };
-          history.unshift(newEntry);
-          localStorage.setItem("duriancount_history", JSON.stringify(history));
-
-          // Save last detection for report
-          localStorage.setItem("duriancount_last_detection", JSON.stringify(result));
-
-          toast({
-            title: "Deteksi selesai",
-            description: `${result.trees} pohon durian terdeteksi`,
-          });
-          return 100;
-        }
-        return prev + 5;
+    try {
+      const result = await runDetection.mutateAsync(storedImageId);
+      
+      console.log("Detection response:", result);
+      
+      const tid = result?.data?.data?.task_id || result?.data?.task_id || result?.task_id || (result as any)?.task_id;
+      
+      if (!tid) {
+         toast({ title: "Gagal memulai deteksi", description: "Obyek task_id API tidak valid.", variant: "destructive" });
+         setIsDetecting(false);
+         return;
+      }
+      
+      setTaskId(tid);
+    } catch (err) {
+      toast({ 
+        title: "Gagal memulai deteksi", 
+        description: getApiErrorMessage(err, "Periksa koneksi API Anda."), 
+        variant: "destructive" 
       });
-    }, 150);
+      setIsDetecting(false);
+    }
   };
 
   const resetProcess = () => {
@@ -130,6 +174,7 @@ const DeteksiPohon = () => {
     setDetectionProgress(0);
     setUploadedFile(null);
     setDetectionResult(null);
+    setTaskId(null);
   };
 
   return (
@@ -284,11 +329,17 @@ const DeteksiPohon = () => {
               </p>
             </div>
 
-            {isDetecting ? (
+            {isDetecting || runDetection.isPending ? (
               <div className="max-w-md mx-auto space-y-4">
                 <div className="flex items-center justify-center gap-3 text-primary">
-                  <Brain className="h-6 w-6 animate-pulse" />
-                  <span className="font-medium">Mendeteksi pohon...</span>
+                  {runDetection.isPending ? (
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  ) : (
+                    <Brain className="h-6 w-6 animate-pulse" />
+                  )}
+                  <span className="font-medium">
+                    {runDetection.isPending ? "Memulai model deteksi..." : "Mendeteksi pohon..."}
+                  </span>
                 </div>
                 <div className="space-y-2">
                   <Progress value={detectionProgress} className="h-2" />
@@ -299,7 +350,7 @@ const DeteksiPohon = () => {
               </div>
             ) : (
               <div className="max-w-md mx-auto">
-                <Button onClick={startDetection} className="w-full" size="lg">
+                <Button onClick={startDetection} className="w-full" size="lg" disabled={!storedImageId}>
                   <Play className="mr-2 h-5 w-5" />
                   Mulai Deteksi
                 </Button>
@@ -311,8 +362,13 @@ const DeteksiPohon = () => {
         {/* Results Section with Interactive Map Preview */}
         {currentStep === 3 && detectionResult && (
           <div className="space-y-6">
-            {/* Interactive Map Preview */}
-            <InteractiveMap className="aspect-[21/9]" />
+            {/* Interactive Map Preview — now with real backend data */}
+            <InteractiveMap
+              className="aspect-[21/9]"
+              imageUrl={orthomosaicQuery.data?.image_url}
+              imageBounds={boundsQuery.data || orthomosaicQuery.data?.bounds}
+              geojsonData={detectionsQuery.data}
+            />
 
             {/* Results Summary */}
             <div className="grid gap-4 sm:grid-cols-3">
@@ -345,7 +401,7 @@ const DeteksiPohon = () => {
                 </Link>
               </Button>
               <Button size="lg" variant="outline" asChild>
-                <Link to="/laporan">
+                <Link to={`/laporan?image_id=${storedImageId}`}>
                   <FileText className="mr-2 h-5 w-5" />
                   Lihat Laporan
                 </Link>

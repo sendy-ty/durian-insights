@@ -1,280 +1,200 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import {
-  Download,
-  Upload,
-  Map,
-  CheckCircle2,
-  ArrowRight,
-  Folder,
-  FileImage,
-} from "lucide-react";
-import { InteractiveMap } from "@/components/map/InteractiveMap";
-import { cn } from "@/lib/utils";
-import { Link } from "react-router-dom";
+import { Upload, Loader2, Play } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-
-type MappingStep = "upload" | "processing" | "ready";
+import { useNavigate } from "react-router-dom";
+import { useUploadZip, useProcessODM, useODMStatus, useODMResult } from "@/hooks/useODM";
+import { getApiErrorMessage } from "@/api/client";
 
 const PetaDigital = () => {
-  const [mappingStep, setMappingStep] = useState<MappingStep>("upload");
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
-  const [processingProgress, setProcessingProgress] = useState(0);
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isProcessing, setIsProcessing] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const folderInputRef = useRef<HTMLInputElement>(null);
+  const acceptedFormats = ".zip";
 
-  // Only JPG, PNG - removed ZIP per requirements
-  const acceptedFormats = ".jpg,.jpeg,.png";
+  const uploadZip = useUploadZip();
+  const processOdm = useProcessODM();
+  const navigate = useNavigate();
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      const validFiles = Array.from(files).filter((file) => {
-        const ext = file.name.toLowerCase().split(".").pop();
-        return ["jpg", "jpeg", "png"].includes(ext || "");
+  // Polling every 3 seconds when processing is active
+  const statusQuery = useODMStatus(projectId, isProcessing ? 3000 : undefined);
+
+  const isFinished = statusQuery.data?.status?.toLowerCase() === "completed" || statusQuery.data?.status?.toLowerCase() === "success";
+  const resultQuery = useODMResult(projectId, isFinished);
+
+  // Transition when status updates to completed
+  useEffect(() => {
+    if (statusQuery.data) {
+      const status = statusQuery.data.status?.toLowerCase();
+      if (status === "completed" || status === "success" || status === "failed") {
+        setIsProcessing(false);
+      }
+    }
+  }, [statusQuery.data]);
+
+  // Navigate when result is fully captured securely
+  useEffect(() => {
+    if (resultQuery.data) {
+      // Safely extract image_id supporting multi-layered Axio objects locally
+      const imgId = resultQuery.data?.data?.image_id || resultQuery.data?.image_id || (resultQuery.data as any)?.image_id;
+      
+      if (imgId) {
+        toast({ title: "Peta Siap", description: "Mengarahkan ke deteksi...", duration: 2000 });
+        setTimeout(() => {
+          navigate(`/deteksi?image_id=${imgId}`);
+        }, 1500);
+      }
+    }
+  }, [resultQuery.data, navigate]);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith(".zip")) {
+      toast({
+        title: "Format tidak didukung",
+        description: "Hanya file ZIP yang diterima.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadProgress(0);
+    setProjectId(null);
+    setIsProcessing(false);
+
+    try {
+      const result = await uploadZip.mutateAsync({
+        file,
+        onProgress: (percent) => setUploadProgress(percent),
       });
 
-      if (validFiles.length === 0) {
-        toast({
-          title: "Format tidak didukung",
-          description: "Gunakan format JPG atau PNG",
-          variant: "destructive",
-        });
+      setUploadProgress(100);
+      console.log("[ODM] Upload raw result:", result);
+      console.log("[ODM] result.data:", result?.data);
+      console.log("[ODM] result.data.data:", (result as any)?.data?.data);
+
+      const pid =
+        result?.data?.data?.project_id ||
+        result?.data?.project_id ||
+        (result as any)?.project_id;
+
+      console.log("[ODM] Extracted project_id:", pid);
+
+      if (!pid) {
+        toast({ title: "Error", description: "project_id tidak ditemukan dari API.", variant: "destructive" });
         return;
       }
 
-      setUploadedFiles(validFiles);
-      setMappingStep("processing");
-      setProcessingProgress(0);
-
-      const interval = setInterval(() => {
-        setProcessingProgress((prev) => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            setMappingStep("ready");
-            return 100;
-          }
-          return prev + 5;
-        });
-      }, 200);
+      setProjectId(pid);
+      console.log("[ODM] project_id saved to state:", pid);
+      toast({ title: "Berhasil", description: `File ZIP berhasil diunggah. project_id: ${pid}` });
+    } catch (err) {
+      toast({ title: "Gagal mengunggah", description: getApiErrorMessage(err), variant: "destructive" });
     }
   };
 
-  const resetUpload = () => {
-    setMappingStep("upload");
-    setUploadedFiles([]);
-    setProcessingProgress(0);
+  const handleProcess = async () => {
+    console.log("[ODM] handleProcess called. projectId =", projectId);
+    if (!projectId) {
+      console.error("[ODM] handleProcess: projectId is null — aborting");
+      toast({ title: "Error", description: "Tidak ada project_id. Upload ZIP dahulu.", variant: "destructive" });
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      console.log(`[ODM] Calling processOdm.mutateAsync with projectId = ${projectId}`);
+      const processResult = await processOdm.mutateAsync(projectId);
+      console.log("[ODM] Process response:", processResult);
+    } catch (err) {
+      console.error("[ODM] processOdm error:", err);
+      toast({ title: "Gagal memulai proses", description: getApiErrorMessage(err), variant: "destructive" });
+      setIsProcessing(false);
+    }
   };
 
-  const handleDownload = () => {
-    toast({
-      title: "Download dimulai",
-      description: "Mengunduh peta digital dalam format TIFF...",
-    });
+  const resetPipeline = () => {
+    setProjectId(null);
+    setUploadProgress(0);
+    setIsProcessing(false);
   };
 
   return (
-    <DashboardLayout
-      title="Peta Digital"
-      description="Buat dan lihat peta digital dari citra drone"
-    >
-      <div className="animate-fade-in h-[calc(100vh-8rem)] flex flex-col">
-        {/* Workflow Steps */}
-        <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card p-4 shadow-sm mb-6">
-          <div
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg transition-colors",
-              mappingStep === "upload"
-                ? "bg-primary/10 text-primary"
-                : "text-muted-foreground"
-            )}
-          >
-            <div
-              className={cn(
-                "flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium",
-                mappingStep === "upload"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-primary text-primary-foreground"
-              )}
-            >
-              {mappingStep === "upload" ? (
-                "1"
-              ) : (
-                <CheckCircle2 className="h-4 w-4" />
-              )}
-            </div>
-            <span className="text-sm font-medium">Upload Citra</span>
+    <DashboardLayout title="Pipeline ODM" description="UI Minimal untuk menguji OpenDroneMap Pipeline">
+      <div className="max-w-3xl mx-auto space-y-6 mt-6">
+        
+        {/* Card 1: Upload */}
+        <div className="rounded-xl border bg-card p-6 shadow-sm">
+          <h2 className="text-xl font-semibold mb-4">1. Upload ZIP</h2>
+          <input ref={fileInputRef} type="file" className="hidden" accept={acceptedFormats} onChange={handleFileUpload} />
+          
+          <div className="flex items-center gap-4 mb-4">
+            <Button onClick={() => fileInputRef.current?.click()} disabled={uploadZip.isPending}>
+              {uploadZip.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+              Pilih & Unggah File ZIP
+            </Button>
           </div>
-
-          <div className="h-px w-8 bg-border" />
-
-          <div
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg transition-colors",
-              mappingStep === "processing"
-                ? "bg-primary/10 text-primary"
-                : "text-muted-foreground"
-            )}
-          >
-            <div
-              className={cn(
-                "flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium",
-                mappingStep === "processing"
-                  ? "bg-primary text-primary-foreground"
-                  : mappingStep === "ready"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted"
-              )}
-            >
-              {mappingStep === "ready" ? (
-                <CheckCircle2 className="h-4 w-4" />
-              ) : (
-                "2"
-              )}
+          
+          {uploadZip.isPending && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Mengunggah file...</span>
+                <span>{uploadProgress}%</span>
+              </div>
+              <Progress value={uploadProgress} className="h-2" />
             </div>
-            <span className="text-sm font-medium">Proses Pemetaan</span>
-          </div>
-
-          <div className="h-px w-8 bg-border" />
-
-          <div
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg transition-colors",
-              mappingStep === "ready"
-                ? "bg-primary/10 text-primary"
-                : "text-muted-foreground"
-            )}
-          >
-            <div
-              className={cn(
-                "flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium",
-                mappingStep === "ready"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted"
-              )}
-            >
-              3
-            </div>
-            <span className="text-sm font-medium">Peta Siap</span>
-          </div>
+          )}
         </div>
 
-        {/* Upload Section */}
-        {mappingStep === "upload" && (
-          <div className="rounded-xl border border-border bg-card p-8 shadow-sm flex-1 flex flex-col">
-            <div className="text-center mb-6">
-              <h2 className="text-xl font-semibold text-card-foreground mb-2">
-                Upload Citra Drone
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Unggah citra udara untuk membuat peta digital dengan ODM
-              </p>
-            </div>
-
-            {/* Hidden inputs */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              className="hidden"
-              accept={acceptedFormats}
-              multiple
-              onChange={handleFileUpload}
-            />
-            <input
-              ref={folderInputRef}
-              type="file"
-              className="hidden"
-              accept={acceptedFormats}
-              multiple
-              {...({ webkitdirectory: "true", directory: "true" } as any)}
-              onChange={handleFileUpload}
-            />
-
-            {/* Upload area */}
-            <div className="flex-1 flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-8 transition-colors hover:border-primary/50 hover:bg-muted/50">
-              <Upload className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-center font-medium text-card-foreground mb-2">
-                Pilih folder atau file citra drone
-              </p>
-              <p className="text-sm text-muted-foreground mb-6">
-                Format: JPG, PNG
-              </p>
-
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => folderInputRef.current?.click()}
-                >
-                  <Folder className="mr-2 h-4 w-4" />
-                  Pilih Folder
-                </Button>
-                <Button onClick={() => fileInputRef.current?.click()}>
-                  <FileImage className="mr-2 h-4 w-4" />
-                  Pilih File
-                </Button>
-              </div>
+        {/* Card 2: Process */}
+        <div className="rounded-xl border bg-card p-6 shadow-sm">
+          <h2 className="text-xl font-semibold mb-4">2. Process ODM</h2>
+          
+          <div className="mb-4 space-y-2">
+            <div className="text-sm">
+              <span className="font-semibold">Project ID: </span>
+              <span className="font-mono text-muted-foreground break-all">
+                {projectId ?? <span className="text-red-500">belum ada (upload ZIP dahulu)</span>}
+              </span>
             </div>
           </div>
-        )}
 
-        {/* Processing Section */}
-        {mappingStep === "processing" && (
-          <div className="rounded-xl border border-border bg-card p-8 shadow-sm flex-1 flex flex-col items-center justify-center">
-            <div className="text-center mb-6">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mx-auto mb-4">
-                <Map className="h-8 w-8 text-primary animate-pulse" />
+          <Button
+            onClick={() => {
+              console.log("[ODM] BUTTON CLICKED. projectId =", projectId);
+              handleProcess();
+            }}
+            disabled={!projectId || isProcessing || processOdm.isPending}
+            className="mb-4"
+          >
+            {processOdm.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+            Mulai Proses
+          </Button>
+
+          {projectId && statusQuery.data && (
+            <div className="bg-muted p-4 rounded-lg space-y-3 font-mono text-sm mt-4">
+              <p><strong>Status:</strong> {statusQuery.data.status || 'Menunggu...'}</p>
+              <p><strong>Step:</strong> {statusQuery.data.step || '-'}</p>
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <strong>Progress:</strong>
+                  <span>{statusQuery.data.progress || 0}%</span>
+                </div>
+                <Progress value={statusQuery.data.progress || 0} className="h-2" />
               </div>
-              <h2 className="text-xl font-semibold text-card-foreground mb-2">
-                Membuat Peta Digital
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Memproses {uploadedFiles.length} citra dengan OpenDroneMap
-              </p>
             </div>
+          )}
+        </div>
 
-            <div className="w-full max-w-md space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                  Memproses citra...
-                </span>
-                <span className="font-medium text-card-foreground">
-                  {processingProgress}%
-                </span>
-              </div>
-              <Progress value={processingProgress} className="h-2" />
-            </div>
-          </div>
+        {projectId && (
+           <Button variant="outline" onClick={resetPipeline} className="w-full">Riset Pipeline</Button>
         )}
 
-        {/* Map Ready Section - SIMPLIFIED: removed coordinates, tree count, legend */}
-        {mappingStep === "ready" && (
-          <div className="flex-1 flex flex-col min-h-0">
-            {/* Map Controls Bar - Only action buttons */}
-            <div className="flex items-center justify-end gap-2 rounded-xl border border-border bg-card p-4 shadow-sm mb-4">
-              <Button variant="outline" size="sm" onClick={handleDownload}>
-                <Download className="mr-2 h-4 w-4" />
-                Download Peta
-              </Button>
-              <Button variant="outline" size="sm" onClick={resetUpload}>
-                <Upload className="mr-2 h-4 w-4" />
-                Upload Baru
-              </Button>
-              <Button size="sm" asChild>
-                <Link to="/deteksi">
-                  Lanjut ke Deteksi
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-
-            {/* Full Map View - Clean, no sidebar or info panels */}
-            <div className="flex-1 min-h-0 rounded-xl overflow-hidden border border-border">
-              <InteractiveMap className="h-full w-full" />
-            </div>
-          </div>
-        )}
       </div>
     </DashboardLayout>
   );

@@ -15,7 +15,21 @@ import Riwayat from "./pages/Riwayat";
 import Pengaturan from "./pages/Pengaturan";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      retryDelay: (attempt) => Math.min(2000 * 2 ** attempt, 10000),
+      staleTime: 60 * 1000,       // 1 minute
+      gcTime: 10 * 60 * 1000,     // 10 minutes
+      refetchOnWindowFocus: false, // prevent surprise refetches
+    },
+    mutations: {
+      retry: 1,
+      retryDelay: 1000,
+    },
+  },
+});
 
 // Initialize theme on app load
 function ThemeInitializer() {
