@@ -20,12 +20,14 @@ export type ProgressCallback = (percent: number) => void;
 export const imageService = {
   upload: async (
     file: File,
-    onProgress?: ProgressCallback
+    onProgress?: ProgressCallback,
+    signal?: AbortSignal
   ): Promise<ImageUploadResponse> => {
     const formData = new FormData();
     formData.append("file", file);
     const response = await apiClient.post("/images/upload", formData, {
       headers: { "Content-Type": "multipart/form-data" },
+      signal,
       timeout: 300_000, // 5 min for large uploads
       onUploadProgress: (event) => {
         if (onProgress && event.total) {

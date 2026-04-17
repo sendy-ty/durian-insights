@@ -26,8 +26,13 @@ export const useLogin = () => {
   return useMutation({
     mutationFn: async (payload: LoginPayload) => {
       const result = await authService.login(payload);
-      const user = await authService.me();
-      return { message: result.message, user };
+      try {
+        const user = await authService.me();
+        return { ...result, user };
+      } catch (err) {
+        console.warn("[AUTH] Failed to fetch user profile after login:", err);
+        return result;
+      }
     },
     onSuccess: (data) => {
       // Seed the cache so ProtectedRoute shows immediately
@@ -55,6 +60,9 @@ export const useLogout = () => {
   return useMutation({
     mutationFn: () => authService.logout(),
     onSuccess: () => {
+      localStorage.removeItem("duriancount_token");
+      localStorage.removeItem("isLogin");
+      localStorage.removeItem("duriancount_user");
       queryClient.setQueryData(AUTH_QUERY_KEY, null);
       queryClient.clear();
     },

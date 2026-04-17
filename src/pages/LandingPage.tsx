@@ -53,26 +53,50 @@ const LandingPage = () => {
     e.preventDefault();
 
     try {
-      const data = await loginMutation.mutateAsync({
+      const response = await loginMutation.mutateAsync({
         username: loginData.email,
         password: loginData.password,
-      });
+      }) as any;
 
-      // Also persist to localStorage for sidebar display compatibility
-      localStorage.setItem(
-        "duriancount_user",
-        JSON.stringify({
-          name: data.user?.name,
-          email: data.user?.email,
-          createdAt: data.user?.created_at,
-        })
-      );
+      console.log("LOGIN RESPONSE:", response);
 
-      toast({
-        title: "Berhasil masuk",
-        description: `Selamat datang kembali, ${data.user?.name || "Pengguna"}.`,
-      });
-      navigate("/dashboard");
+      // Use raw response status for session-based auth validation
+      const status = response?.status || response?.data?.status;
+      
+      // Allow login solely if status is success (no JWT strictly required)
+      const isSuccess = status === "success" || response?.message === "Login successful" || response?.data?.message === "Login successful";
+
+      if (isSuccess) {
+        // We use a dummy token marker if using session cookie auth, to satisfy ProtectedRoute
+        localStorage.setItem("duriancount_token", "session_active");
+
+        const data = response?.data || response;
+
+        // Persist user info
+        const userData = data?.user || {
+          name: loginData.email.split('@')[0],
+          email: loginData.email,
+          createdAt: new Date().toISOString(),
+        };
+
+        localStorage.setItem(
+          "duriancount_user",
+          JSON.stringify({
+            name: userData.name,
+            email: userData.email,
+            createdAt: userData.created_at || userData.createdAt,
+          })
+        );
+
+        toast({
+          title: "Berhasil masuk",
+          description: `Selamat datang kembali, ${userData.name || "Pengguna"}.`,
+        });
+        // Force hard redirect to bypass router cache and sync fully
+        window.location.href = "/dashboard";
+      } else {
+        throw new Error("Respon login tidak valid");
+      }
     } catch (err) {
       toast({
         title: "Gagal masuk",
@@ -159,7 +183,7 @@ const LandingPage = () => {
   const isSubmitting = loginMutation.isPending || registerMutation.isPending;
 
   return (
-    <div 
+    <div
       className="min-h-screen flex flex-col relative overflow-hidden"
       style={{
         backgroundImage: `url(${durianOrchardBg})`,
@@ -181,14 +205,14 @@ const LandingPage = () => {
             <span className="text-xl font-bold text-white">DurianCount</span>
           </div>
           <div className="flex items-center gap-3">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               onClick={() => scrollToAuth("login")}
               className="text-white/90 hover:bg-primary/20 hover:text-white border border-primary/30"
             >
               Masuk
             </Button>
-            <Button 
+            <Button
               onClick={() => scrollToAuth("register")}
               className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
@@ -213,7 +237,7 @@ const LandingPage = () => {
                 </span>
               </h1>
               <p className="text-base lg:text-lg text-white/80 max-w-xl mx-auto lg:mx-0 leading-relaxed">
-                Platform berbasis web untuk mendeteksi dan menghitung pohon durian secara otomatis melalui citra udara drone dengan dukungan algoritma machine learning.
+                Platform Berbasis Web Untuk Mendeteksi dan Menghitung Pohon Durian Secara Otomatis Melalui Citra Udara Drone Dengan Dukungan Algoritma Machine Learning.
               </p>
             </div>
 
@@ -223,13 +247,13 @@ const LandingPage = () => {
                 <CardContent className="pt-6">
                   <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                     <TabsList className="grid w-full grid-cols-2 mb-6 bg-black/30 border border-primary/20">
-                      <TabsTrigger 
-                        value="login" 
+                      <TabsTrigger
+                        value="login"
                         className="text-white/80 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                       >
                         Masuk
                       </TabsTrigger>
-                      <TabsTrigger 
+                      <TabsTrigger
                         value="register"
                         className="text-white/80 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                       >
@@ -275,9 +299,9 @@ const LandingPage = () => {
                             </button>
                           </div>
                         </div>
-                        <Button 
-                          type="submit" 
-                          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" 
+                        <Button
+                          type="submit"
+                          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
                           disabled={isSubmitting}
                         >
                           {loginMutation.isPending ? "Memproses..." : "Masuk"}
@@ -368,9 +392,9 @@ const LandingPage = () => {
                             </button>
                           </div>
                         </div>
-                        <Button 
-                          type="submit" 
-                          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" 
+                        <Button
+                          type="submit"
+                          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
                           disabled={isSubmitting}
                         >
                           {registerMutation.isPending ? "Membuat akun..." : "Buat Akun"}

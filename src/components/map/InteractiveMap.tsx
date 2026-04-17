@@ -61,6 +61,8 @@ export function InteractiveMap({
   center,
   zoom,
 }: InteractiveMapProps) {
+  if (typeof window === "undefined") return null;
+
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const [layerVisible, setLayerVisible] = useState(true);

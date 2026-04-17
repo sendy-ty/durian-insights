@@ -31,8 +31,12 @@ export const authService = {
     return response.data;
   },
 
-  login: async (payload: LoginPayload): Promise<{ message: string }> => {
-    const response = await apiClient.post("/auth/login", payload);
+  login: async (payload: LoginPayload): Promise<any> => {
+    console.log("LOGIN REQUEST:", payload);
+    const response = await apiClient.post("/auth/login", payload, {
+      headers: { "Content-Type": "application/json" }
+    });
+    console.log("LOGIN RESPONSE:", response);
     return response.data;
   },
 

@@ -1,11 +1,24 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
 export const apiClient = axios.create({
-  baseURL: "http://100.100.83.68:8000",  // IP Server "http://100.100.83.68:8000"
+  baseURL: "/api",
   withCredentials: true,
-  // baseURL can be added here if needed, or proxy configuration in vite will handle it.
   timeout: 120000, // 2 min default timeout (uploads override this) 
 });
+
+// ---------------------------------------------------------------------------
+// Request Interceptor — Attach Authorization header if token exists
+// ---------------------------------------------------------------------------
+apiClient.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
+    const token = localStorage.getItem("duriancount_token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 // ---------------------------------------------------------------------------
 // Response Interceptor — Global error handling + 401 redirect
@@ -18,9 +31,11 @@ apiClient.interceptors.response.use(
       const url = error.config?.url || "";
       // Don't redirect if this is the auth-check call itself (avoids redirect loop)
       const isAuthCheck = url.includes("/auth/me") || url.includes("/auth/login") || url.includes("/auth/register");
+
       if (!isAuthCheck) {
-        // Clear any stale local data
-        localStorage.removeItem("duriancount_user");
+        console.warn("[AUTH] 401 Unauthorized - Clearing session and redirecting.");
+        // Clear all session data
+        localStorage.clear();
         // Use window.location so it works outside of React Router context
         window.location.href = "/";
       }

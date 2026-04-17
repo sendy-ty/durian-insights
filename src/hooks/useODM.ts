@@ -29,10 +29,13 @@ export const useODMStatus = (projectId: string | null, refetchInterval?: number)
   });
 };
 
-export const useODMResult = (projectId: string | null, enabled: boolean = false) => {
+export const useODMResult = (projectId: string | null, options: any = {}) => {
   return useQuery({
     queryKey: ["odm-result", projectId],
     queryFn: () => odmService.getResult(projectId!),
-    enabled: !!projectId && enabled,
+    enabled: !!projectId && (options.enabled ?? false),
+    ...options
   });
 };
+
+

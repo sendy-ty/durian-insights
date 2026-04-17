@@ -35,4 +35,5 @@ export const odmService = {
     const response = await apiClient.get(`/odm/${projectId}/result`);
     return response.data; // Expected { image_id }
   },
+
 };

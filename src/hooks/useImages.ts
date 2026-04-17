@@ -4,8 +4,8 @@ import { imageService } from "@/services/image.service";
 export const useUploadImage = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ file, onProgress }: { file: File; onProgress?: (percent: number) => void }) => 
-      imageService.upload(file, onProgress),
+    mutationFn: ({ file, onProgress, signal }: { file: File; onProgress?: (percent: number) => void; signal?: AbortSignal }) => 
+      imageService.upload(file, onProgress, signal),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["images"] });
     },
