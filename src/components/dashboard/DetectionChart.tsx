@@ -1,90 +1,91 @@
 import {
-  AreaChart,
-  Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-
-const defaultData = [
-  { month: "Jan", pohon: 890 },
-  { month: "Feb", pohon: 1020 },
-  { month: "Mar", pohon: 1150 },
-  { month: "Apr", pohon: 1080 },
-  { month: "Mei", pohon: 1247 },
-  { month: "Jun", pohon: 1320 },
-];
+import { Card } from "@/components/ui/card";
 
 interface DetectionChartProps {
-  /** Optional trend data from the backend. Falls back to sample data if not provided. */
-  data?: Array<{ period: string; count: number }>;
+  data?: Array<{ date?: string; trees?: number }>;
+  isLoading?: boolean;
 }
 
-export function DetectionChart({ data }: DetectionChartProps) {
-  // Map backend shape { period, count } to chart shape { month, pohon }
+export function DetectionChart({ data, isLoading }: DetectionChartProps) {
+  if (isLoading) {
+    return (
+      <div className="w-full h-full bg-muted/20 animate-pulse rounded-lg" />
+    );
+  }
+
   const chartData = data && data.length > 0
-    ? data.map((d) => ({ month: d.period, pohon: d.count }))
-    : defaultData;
+    ? data.map((d) => ({
+      date: d.date || "",
+      trees: d.trees || 0,
+    }))
+    : [
+      { date: "Senin", trees: 0 },
+      { date: "Selasa", trees: 0 }
+    ];
 
   return (
-    <div className="h-[300px] w-full">
+    <div className="w-full h-full mt-2">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart
+        <BarChart
           data={chartData}
-          margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+          margin={{ top: 0, right: 0, left: -25, bottom: 0 }}
         >
-          <defs>
-            <linearGradient id="colorPohon" x1="0" y1="0" x2="0" y2="1">
-              <stop
-                offset="5%"
-                stopColor="hsl(var(--primary))"
-                stopOpacity={0.3}
-              />
-              <stop
-                offset="95%"
-                stopColor="hsl(var(--primary))"
-                stopOpacity={0}
-              />
-            </linearGradient>
-          </defs>
           <CartesianGrid
             strokeDasharray="3 3"
-            stroke="hsl(var(--border))"
+            stroke="currentColor"
+            className="text-gray-200 dark:text-gray-700"
             vertical={false}
           />
           <XAxis
-            dataKey="month"
+            dataKey="date"
             axisLine={false}
             tickLine={false}
-            tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+            tick={{ fill: "currentColor", fontSize: 11 }}
+            className="text-gray-400 dark:text-gray-500"
+            tickFormatter={(d) => {
+              const dateObj = new Date(d);
+              return isNaN(dateObj.getTime()) ? d : dateObj.toLocaleDateString("id-ID", {
+                day: "2-digit",
+                month: "short"
+              });
+            }}
+            dy={10}
           />
           <YAxis
             axisLine={false}
             tickLine={false}
-            tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+            tick={{ fill: "currentColor", fontSize: 11 }}
+            className="text-gray-400 dark:text-gray-500"
           />
           <Tooltip
-            contentStyle={{
-              backgroundColor: "hsl(var(--card))",
-              border: "1px solid hsl(var(--border))",
-              borderRadius: "8px",
-              boxShadow: "var(--shadow-md)",
+            cursor={{ fill: "currentColor", opacity: 0.1 }}
+            content={({ active, payload, label }) => {
+              if (active && payload && payload.length) {
+                const item = payload[0].payload;
+                return (
+                  <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-2 rounded-lg shadow-xl">
+                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{label}</p>
+                    <p className="text-sm font-bold text-green-600 dark:text-green-400">{item.trees} Pohon</p>
+                  </div>
+                );
+              }
+              return null;
             }}
-            labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 600 }}
-            itemStyle={{ color: "hsl(var(--primary))" }}
           />
-          <Area
-            type="monotone"
-            dataKey="pohon"
-            stroke="hsl(var(--primary))"
-            strokeWidth={2}
-            fillOpacity={1}
-            fill="url(#colorPohon)"
-            name="Pohon Terdeteksi"
+          <Bar
+            dataKey="trees"
+            radius={[4, 4, 0, 0]}
+            fill="#22c55e"
           />
-        </AreaChart>
+        </BarChart>
       </ResponsiveContainer>
     </div>
   );

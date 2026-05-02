@@ -231,7 +231,7 @@ const DeteksiPohon = () => {
   return (
     <DashboardLayout
       title="Deteksi Pohon"
-      description="Deteksi pohon durian dari citra drone menggunakan AI"
+      description="Hitung jumlah pohon durian secara otomatis dari foto drone"
     >
       <div className="space-y-6 animate-fade-in">
         {/* Step Indicator */}
@@ -443,7 +443,7 @@ const DeteksiPohon = () => {
                   </div>
                 </div>
                 <div className="rounded-xl border border-border bg-card overflow-hidden shadow-lg h-[400px] lg:h-auto">
-                   <InteractiveMap
+                  <InteractiveMap
                     className="h-full w-full"
                     imageUrl={orthomosaicQuery.data?.image_url}
                     imageBounds={boundsQuery.data || orthomosaicQuery.data?.bounds}
@@ -478,8 +478,8 @@ const DeteksiPohon = () => {
             {/* Actions */}
             <div className="flex flex-wrap gap-3 justify-center">
               <Button size="lg" asChild className="bg-green-600 hover:bg-green-700 text-white border-none shadow-md">
-                <a 
-                  href={`${apiClient.defaults.baseURL}/images/${activeImageId}/annotated`} 
+                <a
+                  href={`${apiClient.defaults.baseURL}/images/${activeImageId}/annotated`}
                   download={`annotated_${activeImageId}.jpg`}
                   target="_blank"
                   rel="noreferrer"

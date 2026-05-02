@@ -3,12 +3,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import LandingPage from "./pages/LandingPage";
 
 import Dashboard from "./pages/Dashboard";
-import DeteksiPohon from "./pages/DeteksiPohon";
+import DetectionPage from "./features/detection/DetectionPage";
 import PetaDigital from "./pages/PetaDigital";
 import Laporan from "./pages/Laporan";
 import Riwayat from "./pages/Riwayat";
@@ -72,7 +72,7 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <SafeErrorBoundary>
-                    <DeteksiPohon />
+                    <DetectionPage />
                   </SafeErrorBoundary>
                 </ProtectedRoute>
               }
@@ -87,6 +87,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route path="/peta-digital" element={<Navigate to="/peta" replace />} />
             <Route
               path="/laporan"
               element={

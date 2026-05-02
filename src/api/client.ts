@@ -3,7 +3,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 export const apiClient = axios.create({
   baseURL: "/api",
   withCredentials: true,
-  timeout: 120000, // 2 min default timeout (uploads override this) 
+  timeout: 0, // Disable timeout to support large file uploads
 });
 
 // ---------------------------------------------------------------------------
@@ -80,4 +80,12 @@ export function getApiErrorMessage(error: unknown, fallback = "Terjadi kesalahan
   if (status === 500) return "Kesalahan server internal.";
 
   return fallback;
+}
+
+// ---------------------------------------------------------------------------
+// Fallback URL normalizer to prevent broken links due to port issues
+// ---------------------------------------------------------------------------
+export function normalizeUrl(url?: string | null): string {
+  if (!url) return "";
+  return url.replace(":8080", "");
 }

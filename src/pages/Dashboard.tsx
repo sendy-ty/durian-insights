@@ -1,242 +1,254 @@
+import { useState, useEffect, useRef } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { StatCard } from "@/components/dashboard/StatCard";
 import { DetectionChart } from "@/components/dashboard/DetectionChart";
+import { LatestImages } from "@/components/dashboard/LatestImages";
 import {
   TreeDeciduous,
-  Target,
-  MapPin,
-  ArrowRight,
+  Image as ImageIcon,
+  UploadCloud,
   Loader2,
-  AlertCircle,
-  FileImage,
-  Calendar,
+  Map,
+  PlayCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
-  useDashboardSummary,
-  useDashboardTrends,
-  useLatestImages,
-} from "@/hooks/useDashboard";
+  getDashboardSummary,
+  getDashboardTrends,
+  getLatestImages,
+} from "@/services/dashboard.service";
+import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+
+const formatNumber = (n: any) => (n ?? 0).toLocaleString("id-ID");
 
 const Dashboard = () => {
-  const summaryQuery = useDashboardSummary();
-  const trendsQuery = useDashboardTrends();
-  const latestImagesQuery = useLatestImages();
+  const navigate = useNavigate();
+  const [summary, setSummary] = useState<any>(null);
+  const [trends, setTrends] = useState<any[]>([]);
+  const [latestImages, setLatestImages] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const resultsRef = useRef<HTMLDivElement>(null);
 
-  const stats = summaryQuery.data?.stats;
-  const isLoading = summaryQuery.isLoading;
-  const isError = summaryQuery.isError;
+  const loadData = async (showSilently = false) => {
+    try {
+      if (!showSilently) setLoading(true);
+      const [summaryRes, trendsRes, latestRes] = await Promise.all([
+        getDashboardSummary(),
+        getDashboardTrends({ days: 7 }),
+        getLatestImages({ limit: 5 }),
+      ]);
+
+      if (summaryRes) setSummary(summaryRes);
+      if (trendsRes) setTrends(Array.isArray(trendsRes) ? trendsRes : []);
+      if (latestRes) {
+        setLatestImages(Array.isArray(latestRes) ? latestRes : []);
+        const processing = latestRes.some((img: any) =>
+          img.status?.toLowerCase() === "processing" ||
+          img.status?.toLowerCase() === "running" ||
+          img.status?.toLowerCase() === "pending"
+        );
+        setIsProcessing(processing);
+      }
+    } catch (error) {
+      console.error("Gagal memuat data", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+    const interval = setInterval(() => loadData(true), 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (!isProcessing && latestImages.length > 0 && !loading) {
+      const lastStatus = localStorage.getItem("last_detection_status");
+      if (lastStatus === "processing") {
+        resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        localStorage.removeItem("last_detection_status");
+      }
+    }
+  }, [isProcessing, latestImages, loading]);
+
+  const trendData = (trends || []).map(item => ({
+    date: item.date,
+    trees: item.total_trees || 0,
+  })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  const hasData = summary?.total_images > 0;
+  const latestResult = latestImages[0];
 
   return (
-    <DashboardLayout
-      title="Dashboard"
-      description="Ringkasan hasil deteksi pohon durian"
-    >
-      <div className="animate-fade-in h-[calc(100vh-8rem)] flex flex-col">
-        {/* Error banner */}
-        {isError && (
-          <div className="mb-4 flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-destructive">
-            <AlertCircle className="h-5 w-5 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-medium">Gagal memuat data dashboard</p>
-              <p className="text-xs text-destructive/80">
-                Periksa koneksi ke server dan coba muat ulang halaman.
-              </p>
+    <DashboardLayout title="Dashboard" description="Sistem Penghitung Pohon Durian">
+      <div className="max-w-4xl mx-auto space-y-10 pb-12 pt-6 md:pt-8 px-4 transition-colors">
+
+        {/* 1. Hero */}
+        <div className="text-center">
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-3">Selamat datang di DurianCount 👋</h1>
+          <p className="text-base sm:text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+            Pantau kebun Anda dengan mudah. Hitung jumlah pohon durian dari citra drone secara otomatis dan akurat.
+          </p>
+        </div>
+
+        {/* 2. Tombol CTA */}
+        <div className="space-y-4">
+          <p className="text-center text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fitur Utama</p>
+          <div className="flex flex-col sm:flex-row justify-center items-stretch gap-4 w-full">
+            {/* Button 1: Upload & Deteksi */}
+            <div className="flex flex-col items-center gap-2 flex-1">
+              <Button
+                size="lg"
+                disabled={isProcessing}
+                onClick={() => {
+                  localStorage.setItem("last_detection_status", "processing");
+                  navigate("/deteksi");
+                }}
+                className={cn(
+                  "w-full h-auto py-4 px-6 shadow-md hover:shadow-lg rounded-xl transition-all",
+                  isProcessing ? "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500" : "bg-green-600 hover:bg-green-700 text-white hover:-translate-y-0.5"
+                )}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : <UploadCloud className="h-5 w-5" />}
+                  <span className="text-lg font-bold">Upload & Deteksi</span>
+                </div>
+              </Button>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="ml-auto border-destructive/30 text-destructive hover:bg-destructive/10"
-              onClick={() => {
-                summaryQuery.refetch();
-                trendsQuery.refetch();
-                latestImagesQuery.refetch();
-              }}
-            >
-              Coba Lagi
-            </Button>
+
+            {/* Button 2: Peta Digital */}
+            <div className="flex flex-col items-center gap-2 flex-1">
+              <Button
+                size="lg"
+                onClick={() => navigate("/peta")}
+                className="w-full h-auto py-4 px-6 bg-white dark:bg-gray-800 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-900/50 hover:bg-green-50 dark:hover:bg-green-900/20 shadow-md hover:shadow-lg rounded-xl transition-all hover:-translate-y-0.5"
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <Map className="h-5 w-5" />
+                  <span className="text-lg font-bold">Peta Digital</span>
+                </div>
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {isProcessing && (
+          <div className="flex items-center justify-center gap-2 text-green-700 dark:text-green-400 font-medium text-sm animate-pulse bg-green-50 dark:bg-green-900/20 px-4 py-2 rounded-lg border border-green-200 dark:border-green-900/30 w-fit mx-auto">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Sistem sedang memproses data... 🌱
           </div>
         )}
 
-        {/* Stats Grid - 3 essential metrics */}
-        <div className="grid gap-4 sm:grid-cols-3 mb-6">
-          {isLoading ? (
-            <>
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="rounded-xl border border-border bg-card p-6 shadow-sm flex items-center justify-center"
-                >
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ))}
-            </>
-          ) : (
-            <>
-              <StatCard
-                title="Total Pohon"
-                value={stats?.total_trees?.toLocaleString() ?? "–"}
-                subtitle="Terdeteksi dari citra drone"
-                icon={TreeDeciduous}
-              />
-              <StatCard
-                title="Akurasi Deteksi"
-                value={
-                  stats?.average_accuracy != null
-                    ? `${stats.average_accuracy.toFixed(1)}%`
-                    : "–"
-                }
-                subtitle="Model YOLOv11"
-                icon={Target}
-              />
-              <StatCard
-                title="Area Terpetakan"
-                value={
-                  stats?.total_area_hectares != null
-                    ? `${stats.total_area_hectares.toFixed(1)} Ha`
-                    : "–"
-                }
-                subtitle={`${stats?.total_detections ?? 0} deteksi`}
-                icon={MapPin}
-              />
-            </>
-          )}
-        </div>
-
-        {/* Main Content Grid - flex-1 to fill remaining space */}
-        <div className="grid gap-6 lg:grid-cols-5 flex-1 min-h-0">
-          {/* Chart Section */}
-          <div className="lg:col-span-3 rounded-xl border border-border bg-card p-6 shadow-sm flex flex-col">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-card-foreground">
-                Tren Deteksi
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Jumlah pohon terdeteksi per periode
-              </p>
-            </div>
-            <div className="flex-1 min-h-0">
-              {trendsQuery.isLoading ? (
-                <div className="flex h-full items-center justify-center">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-              ) : trendsQuery.isError ? (
-                <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
-                  <AlertCircle className="h-8 w-8" />
-                  <p className="text-sm">Gagal memuat tren deteksi</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => trendsQuery.refetch()}
-                  >
-                    Coba Lagi
-                  </Button>
-                </div>
-              ) : (
-                <DetectionChart data={trendsQuery.data} />
-              )}
-            </div>
+        {/* Loading / Empty State / Main Content */}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-16 gap-4">
+            <Loader2 className="h-8 w-8 text-green-500 animate-spin" />
+            <p className="text-gray-500 dark:text-gray-400 font-medium">Memuat data kebun...</p>
           </div>
+        ) : !hasData ? (
+          <div className="text-center py-16 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl transition-colors">
+            <TreeDeciduous className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">Belum ada data kebun</h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-6">Upload foto pertama Anda untuk mulai menghitung pohon 🌱</p>
+          </div>
+        ) : (
+          <div className="space-y-10" ref={resultsRef}>
 
-          {/* Right panel — Latest Images + Actions */}
-          <div className="lg:col-span-2 rounded-xl border border-border bg-card p-6 shadow-sm flex flex-col">
-            <h2 className="mb-4 text-lg font-semibold text-card-foreground">
-              Citra Terbaru
-            </h2>
+            {/* 3. KPI Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+              <Card className="p-6 flex items-center gap-5 rounded-xl shadow-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 transition-colors">
+                <div className="h-14 w-14 bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-xl flex items-center justify-center shrink-0">
+                  <TreeDeciduous className="h-7 w-7" />
+                </div>
+                <div className="flex flex-col justify-center">
+                  <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Total Pohon Terdeteksi</p>
+                  <p className="text-3xl font-black text-gray-800 dark:text-gray-100 leading-none">
+                    {formatNumber(summary?.total_durian_trees_detected)}
+                  </p>
+                </div>
+              </Card>
 
-            <div className="space-y-3 flex-1 overflow-y-auto">
-              {latestImagesQuery.isLoading ? (
-                <div className="flex h-full items-center justify-center">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <Card className="p-6 flex items-center gap-5 rounded-xl shadow-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 transition-colors">
+                <div className="h-14 w-14 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center shrink-0">
+                  <ImageIcon className="h-7 w-7" />
                 </div>
-              ) : latestImagesQuery.isError ? (
-                <div className="flex flex-col items-center justify-center gap-2 py-8 text-muted-foreground">
-                  <AlertCircle className="h-6 w-6" />
-                  <p className="text-xs">Gagal memuat citra</p>
+                <div className="flex flex-col justify-center">
+                  <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Total Citra Diproses</p>
+                  <p className="text-3xl font-black text-gray-800 dark:text-gray-100 leading-none">
+                    {formatNumber(summary?.total_images)}
+                  </p>
                 </div>
-              ) : latestImagesQuery.data && latestImagesQuery.data.length > 0 ? (
-                latestImagesQuery.data.map((img) => (
-                  <div
-                    key={img.image_id}
-                    className="flex items-center gap-3 rounded-lg bg-muted/50 p-3 transition-colors hover:bg-muted/70"
-                  >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 flex-shrink-0">
-                      <FileImage className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-card-foreground truncate">
-                        {img.filename}
-                      </p>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Calendar className="h-3 w-3" />
-                        <span>
-                          {new Date(img.upload_date).toLocaleDateString("id-ID", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          })}
-                        </span>
-                      </div>
-                    </div>
+              </Card>
+            </div>
+
+            {/* 4. Konten Tengah (Riwayat & Grafik) */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full mt-10">
+              {/* Riwayat */}
+              <div className="col-span-1 flex flex-col h-full">
+                <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">Riwayat Terakhir</h2>
+                <div className="flex-1 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors">
+                  <LatestImages
+                    images={latestImages}
+                    isLoading={loading}
+                    onNavigate={(id) => navigate(`/deteksi?image_id=${id}`)}
+                  />
+                </div>
+              </div>
+
+              {/* Grafik */}
+              <div className="col-span-1 lg:col-span-2 flex flex-col h-full">
+                <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">Tren Perhitungan Pohon Durian</h2>
+                <div className="flex-1 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors">
+                  <div className="h-[360px] w-full">
+                    <DetectionChart data={trendData} isLoading={loading} />
                   </div>
-                ))
-              ) : (
-                <div className="flex flex-col items-center justify-center gap-2 py-8 text-muted-foreground">
-                  <FileImage className="h-8 w-8" />
-                  <p className="text-sm">Belum ada citra</p>
-                  <p className="text-xs">Upload citra drone untuk memulai</p>
-                </div>
-              )}
-
-              {/* System info at the bottom */}
-              <div className="pt-2 border-t border-border mt-2 space-y-2">
-                <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
-                  <span className="text-sm text-muted-foreground">Model AI</span>
-                  <span className="text-sm font-medium text-card-foreground">
-                    YOLOv11
-                  </span>
-                </div>
-                <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
-                  <span className="text-sm text-muted-foreground">
-                    Total Deteksi
-                  </span>
-                  <span className="text-sm font-medium text-card-foreground">
-                    {stats?.total_detections ?? "–"} proses
-                  </span>
-                </div>
-                <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
-                  <span className="text-sm text-muted-foreground">
-                    Deteksi Terakhir
-                  </span>
-                  <span className="text-sm font-medium text-card-foreground">
-                    {stats?.last_detection_date
-                      ? new Date(stats.last_detection_date).toLocaleDateString(
-                          "id-ID",
-                          { day: "numeric", month: "short", year: "numeric" }
-                        )
-                      : "–"}
-                  </span>
                 </div>
               </div>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-border space-y-2">
-              <Button className="w-full" asChild>
-                <Link to="/deteksi">
-                  Mulai Deteksi Baru
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-              <Button variant="outline" className="w-full" asChild>
-                <Link to="/peta">
-                  Lihat Peta Digital
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
+            <div className="border-t border-gray-100 dark:border-gray-800 pt-8" />
+
+            {/* 5. Video Tutorial Section */}
+            <div className="w-full">
+              <div className="mb-4">
+                <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200">Video Panduan</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Tonton panduan singkat penggunaan sistem</p>
+              </div>
+              <div className="h-[220px] rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 shadow-sm p-4 flex items-center justify-center group cursor-pointer border border-gray-200 dark:border-gray-700 transition-all hover:bg-gray-50 dark:hover:bg-gray-700">
+                <div className="text-center space-y-3 opacity-80 group-hover:opacity-100 transition-opacity">
+                  <div className="h-12 w-12 bg-white dark:bg-gray-700 text-gray-400 dark:text-gray-500 rounded-full flex items-center justify-center mx-auto shadow-sm group-hover:scale-105 transition-transform group-hover:text-green-600 dark:group-hover:text-green-400">
+                    <PlayCircle className="h-8 w-8 ml-0.5" />
+                  </div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Video tutorial akan ditampilkan di sini</p>
+                </div>
+              </div>
             </div>
+
+            {/* 6. Cara Penggunaan (Compact) */}
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm transition-colors">
+              <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-6 text-center">Cara Penggunaan Cepat</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <div className="flex flex-col items-center text-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 font-bold flex items-center justify-center shrink-0 shadow-sm">1</div>
+                  <p className="text-gray-600 dark:text-gray-300 text-sm font-medium">Unggah foto drone orthophoto kebun Anda</p>
+                </div>
+                <div className="flex flex-col items-center text-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 font-bold flex items-center justify-center shrink-0 shadow-sm">2</div>
+                  <p className="text-gray-600 dark:text-gray-300 text-sm font-medium">Sistem menghitung pohon menggunakan AI</p>
+                </div>
+                <div className="flex flex-col items-center text-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 font-bold flex items-center justify-center shrink-0 shadow-sm">3</div>
+                  <p className="text-gray-600 dark:text-gray-300 text-sm font-medium">Lihat hasil deteksi dan unduh laporan PDF</p>
+                </div>
+              </div>
+            </div>
+
           </div>
-        </div>
+        )}
+
       </div>
     </DashboardLayout>
   );

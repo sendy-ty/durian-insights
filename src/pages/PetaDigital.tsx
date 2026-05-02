@@ -2,12 +2,12 @@ import { useState, useRef, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Upload, Loader2, Play, AlertCircle } from "lucide-react";
+import { Upload, Loader2, Play, AlertCircle, AlertTriangle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate, Link } from "react-router-dom";
 import { Download, ChevronRight, RefreshCcw, Search, ZoomIn, ZoomOut, RotateCcw, MapPin } from "lucide-react";
 import { useUploadZip, useProcessODM, useODMStatus, useODMResult } from "@/hooks/useODM";
-import { getApiErrorMessage, apiClient } from "@/api/client";
+import { getApiErrorMessage, apiClient, normalizeUrl } from "@/api/client";
 import { cn } from "@/lib/utils";
 
 const ODM_STAGES = [
@@ -149,7 +149,7 @@ const PetaDigital = () => {
         setFakeProgress((prev) => {
           // Gradual increment
           let increment = 0.2 + (Math.random() * 0.3);
-          
+
           // If backend is significantly ahead, speed up catchup
           if (progress > prev + 5) {
             increment = 1.5;
@@ -177,7 +177,7 @@ const PetaDigital = () => {
       setCurrentStage(ODM_STAGES[0].name);
       return;
     }
-    
+
     // Find first stage where progress is >= current fakeProgress
     const stage = ODM_STAGES.find(s => fakeProgress <= s.progress) || ODM_STAGES[ODM_STAGES.length - 1];
     setCurrentStage(stage.name);
@@ -206,23 +206,27 @@ const PetaDigital = () => {
   const tifUrl = resultData?.orthomosaic_url;
   const resultImageId = resultData?.image_id;
   const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
 
-  const fullTifUrl = tifUrl?.startsWith("http")
+  const fullTifUrlRaw = tifUrl?.startsWith("http")
     ? tifUrl
     : tifUrl ? `${apiClient.defaults.baseURL}${tifUrl}` : null;
+  const fullTifUrl = normalizeUrl(fullTifUrlRaw);
 
   // Reset image loading when process starts
   useEffect(() => {
     if (isProcessing) {
       setImageLoading(true);
+      setImageError(false);
     }
   }, [isProcessing]);
 
-  // Normalize Preview URL
+  // Use preview URL from result endpoint ONLY
   const previewUrl = resultData?.preview_url;
-  const fullPreviewUrl = previewUrl?.startsWith("http")
+  const fullPreviewUrlRaw = previewUrl?.startsWith("http")
     ? previewUrl
     : previewUrl ? `${apiClient.defaults.baseURL}${previewUrl}` : null;
+  const fullPreviewUrl = normalizeUrl(fullPreviewUrlRaw);
 
   useEffect(() => {
     console.log("PREVIEW:", fullPreviewUrl);
@@ -234,7 +238,8 @@ const PetaDigital = () => {
       return;
     }
 
-    const downloadUrl = `${apiClient.defaults.baseURL}/media/odm/${activeId}/odm_orthophoto/odm_orthophoto.tif`;
+    const downloadUrlRaw = `${apiClient.defaults.baseURL}/media/odm/${activeId}/odm_orthophoto/odm_orthophoto.tif`;
+    const downloadUrl = normalizeUrl(downloadUrlRaw);
     console.log("FINAL DOWNLOAD URL:", downloadUrl);
 
     try {
@@ -273,6 +278,21 @@ const PetaDigital = () => {
   };
 
   const handleMouseUp = () => setIsDragging(false);
+
+  const handleWheel = (e: React.WheelEvent) => {
+    if (e.deltaY < 0) {
+      setZoom(prev => Math.min(prev + 0.2, 5));
+    } else {
+      setZoom(prev => Math.max(prev - 0.2, 1));
+    }
+  };
+
+  const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.2, 5));
+  const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.2, 1));
+  const handleReset = () => {
+    setZoom(1);
+    setPos({ x: 0, y: 0 });
+  };
 
   const handleCheck = () => {
     if (!checkProjectId) return;
@@ -373,46 +393,54 @@ const PetaDigital = () => {
     setPos({ x: 0, y: 0 });
     setZoom(1);
     toast({ title: "Pipeline Direset", description: "Semua data telah dibersihkan." });
-  };
-
-  return (
-    <DashboardLayout title="Pipeline ODM" description="Pembuatan Peta Orthophoto Dengan OpenDroneMap (ODM)">
-      <div className="w-full max-w-[1200px] mx-auto px-6 space-y-6 mt-6">
+  }; return (
+    <DashboardLayout title="Pemetaan Lahan" description="Buat peta kebun dari foto drone secara otomatis">
+      <div className="w-full max-w-6xl mx-auto px-6 space-y-6 mt-6 animate-fade-in transition-colors">
 
         {/* Card 0: Check Project */}
-        <div className="rounded-xl border bg-card p-6 shadow-sm border-primary/20 bg-primary/5">
-          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+        <div className="rounded-xl border bg-white dark:bg-gray-800 p-6 shadow-sm border-gray-200 dark:border-gray-700 transition-colors">
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-green-600 dark:text-green-500">
             <Search className="h-5 w-5" />
-            Cek Project ID
+            Cek Proses
           </h2>
           <div className="flex gap-2">
             <input
               type="text"
-              placeholder="Masukkan Project ID (UUID)..."
-              className="flex-1 px-3 py-2 bg-background border rounded-md text-sm font-mono focus:ring-2 focus:ring-primary outline-none"
+              placeholder="Masukkan ID Proses Anda..."
+              className="flex-1 px-4 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-mono focus:ring-2 focus:ring-green-500 outline-none transition-all text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
               value={checkProjectId}
               onChange={(e) => setCheckProjectId(e.target.value)}
             />
-            <Button onClick={handleCheck} disabled={!checkProjectId || statusQuery.isLoading}>
-              {statusQuery.isLoading && checkedId === checkProjectId ? <Loader2 className="h-4 w-4 animate-spin" /> : "Cek"}
+            <Button
+              onClick={handleCheck}
+              disabled={!checkProjectId || statusQuery.isLoading}
+              className="bg-green-600 hover:bg-green-700 text-white rounded-lg px-6"
+            >
+              {statusQuery.isLoading && checkedId === checkProjectId ? <Loader2 className="h-4 w-4 animate-spin" /> : "Cek Status"}
             </Button>
           </div>
           {isNotFound && checkedId && (
             <p className="text-xs text-red-500 mt-2 font-medium flex items-center gap-1">
               <AlertCircle size={12} />
-              Gagal menemukan proyek atau ID tidak valid.
+              ID tidak ditemukan. Pastikan ID yang dimasukkan sudah benar.
             </p>
           )}
         </div>
 
         {/* Card 1: Upload */}
-        <div className="rounded-xl border bg-card p-6 shadow-sm">
-          <h2 className="text-xl font-semibold mb-4">1. Upload ZIP</h2>
+        <div className="rounded-xl border bg-white dark:bg-gray-800 p-6 shadow-sm border-gray-200 dark:border-gray-700 transition-colors">
+          <h2 className="text-xl font-semibold mb-1 text-gray-800 dark:text-gray-100">1. Upload Foto Drone</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Unggah file ZIP yang berisi kumpulan foto drone kebun Anda.</p>
+
           <input ref={fileInputRef} type="file" className="hidden" accept={acceptedFormats} onChange={handleFileUpload} />
 
           <div className="space-y-4 mb-4">
             <div className="flex items-center gap-4">
-              <Button onClick={() => fileInputRef.current?.click()} disabled={uploadZip.isPending}>
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadZip.isPending}
+                className="bg-green-600 hover:bg-green-700 text-white rounded-lg shadow-sm"
+              >
                 {uploadZip.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
                 Pilih & Unggah File ZIP
               </Button>
@@ -422,21 +450,21 @@ const PetaDigital = () => {
           {uploadZip.isPending && (
             <div className="space-y-2 mb-4">
               <div className="flex justify-between text-sm mb-1">
-                <span>Mengunggah file...</span>
-                <span className="font-semibold">{uploadProgress}%</span>
+                <span className="text-gray-600 dark:text-gray-400">Mengunggah file...</span>
+                <span className="font-bold text-green-600 dark:text-green-500">{uploadProgress}%</span>
               </div>
-              <Progress value={uploadProgress} className="h-2" />
+              <Progress value={uploadProgress} className="h-2 bg-gray-100 dark:bg-gray-700" />
             </div>
           )}
 
           {uploadZip.isError && (
-            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg space-y-3">
-              <p className="text-sm text-red-600 font-medium">Gagal mengunggah file ZIP.</p>
+            <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 rounded-lg space-y-3 transition-colors">
+              <p className="text-sm text-red-600 dark:text-red-400 font-medium">Gagal mengunggah file ZIP.</p>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
-                className="bg-white"
+                className="bg-white dark:bg-gray-800 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/40"
               >
                 <RefreshCcw className="mr-2 h-4 w-4" />
                 Coba Lagi
@@ -446,214 +474,208 @@ const PetaDigital = () => {
         </div>
 
         {/* Card 2: Process */}
-        <div className="rounded-xl border bg-card p-6 shadow-sm">
-          <h2 className="text-xl font-semibold mb-4">2. Process ODM</h2>
+        <div className="rounded-xl border bg-white dark:bg-gray-800 p-6 shadow-sm border-gray-200 dark:border-gray-700 transition-colors">
+          <h2 className="text-xl font-semibold mb-1 text-gray-800 dark:text-gray-100">2. Proses Pembuatan Peta</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Mulai proses pengolahan foto drone menjadi satu peta utuh.</p>
 
-          <div className="mb-4 space-y-2">
-            <div className="text-sm">
-              <span className="font-semibold">Project ID: </span>
-              <span className="font-mono text-muted-foreground break-all">
-                {projectId ?? <span className="text-red-500">belum ada (upload ZIP dahulu)</span>}
+          <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-lg inline-block transition-colors">
+            <div className="text-sm flex items-center gap-2">
+              <span className="font-semibold text-gray-600 dark:text-gray-400">ID Proses: </span>
+              <span className="font-mono text-gray-500 dark:text-gray-300 break-all">
+                {projectId ?? <span className="text-red-400 italic">belum ada (upload dahulu)</span>}
               </span>
             </div>
           </div>
 
           {processOdm.isError && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-600 font-medium">Gagal memulai proses ODM.</p>
-              <p className="text-xs text-red-500 mt-1">{getApiErrorMessage(processOdm.error)}</p>
+            <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 rounded-lg transition-colors">
+              <p className="text-sm text-red-600 dark:text-red-400 font-medium">Gagal memulai proses.</p>
+              <p className="text-xs text-red-500 dark:text-red-400/80 mt-1">{getApiErrorMessage(processOdm.error)}</p>
             </div>
           )}
 
-          <Button
-            onClick={() => {
-              console.log("[ODM] BUTTON CLICKED. projectId =", projectId);
-              handleProcess();
-            }}
-            disabled={!projectId || isProcessing || processOdm.isPending}
-            className="mb-4"
-          >
-            {processOdm.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
-            Mulai Proses
-          </Button>
+          <div className="flex flex-col gap-4">
+            <Button
+              onClick={() => {
+                console.log("[ODM] BUTTON CLICKED. projectId =", projectId);
+                handleProcess();
+              }}
+              disabled={!projectId || isProcessing || processOdm.isPending}
+              className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-medium py-6 rounded-xl shadow-md transition-all active:scale-95"
+            >
+              {processOdm.isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Play className="mr-2 h-5 w-5" />}
+              <span className="text-lg">Mulai Pembuatan Peta</span>
+            </Button>
 
-          {projectId && statusQuery.data && (
-            <div className="bg-muted p-4 rounded-lg space-y-3 font-mono text-sm mt-4">
-              <p className={cn("font-bold", currentStatus === "failed" ? "text-red-600" : "text-primary")}>
-                <strong>Status:</strong> {currentStatus || 'Menunggu...'}
-              </p>
-              {currentStep && currentStep !== "-" && <p><strong>Step:</strong> {currentStep}</p>}
-              {!isFinished && currentStatus !== "failed" && (
-                  <div className="space-y-1 transition-all duration-500">
-                    <div className="flex justify-between items-end mb-1">
+            {projectId && statusQuery.data && (
+              <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 p-5 rounded-xl space-y-4 mt-2 transition-colors">
+                <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className={cn(
+                      "h-3 w-3 rounded-full animate-pulse",
+                      currentStatus === "completed" ? "bg-green-500" : currentStatus === "failed" ? "bg-red-500" : "bg-amber-500"
+                    )} />
+                    <span className="text-sm font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400">Status Proses</span>
+                  </div>
+                  <span className={cn(
+                    "text-sm font-black px-3 py-1 rounded-full",
+                    currentStatus === "completed" ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400" : currentStatus === "failed" ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400" : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
+                  )}>
+                    {currentStatus === "completed" ? "Selesai" : currentStatus === "failed" ? "Gagal" : "Sedang Dibuat"}
+                  </span>
+                </div>
+
+                {!isFinished && currentStatus !== "failed" && (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-end">
                       <div className="flex flex-col">
-                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Current Step</span>
-                        <strong className="text-primary animate-pulse">{currentStage}</strong>
+                        <span className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-gray-500 font-bold mb-1">Tahap Sekarang</span>
+                        <strong className="text-gray-700 dark:text-gray-300">{currentStage}</strong>
                       </div>
                       <div className="text-right">
-                        <span className="text-2xl font-black text-primary">{Math.floor(fakeProgress)}%</span>
+                        <span className="text-3xl font-black text-green-600 dark:text-green-400">{Math.floor(fakeProgress)}%</span>
                       </div>
                     </div>
-                    <Progress value={fakeProgress} className="h-3 transition-all duration-500 bg-primary/10" />
+                    <Progress value={fakeProgress} className="h-3 bg-gray-200 dark:bg-gray-700 shadow-inner" />
                     {!isProcessing && (
-                      <p className="text-[10px] text-muted-foreground italic mt-2">
-                        Menunggu proses dimulai...
+                      <p className="text-xs text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-900/20 p-2 rounded border border-amber-100 dark:border-amber-900/30 flex items-center gap-2">
+                        <AlertCircle size={14} />
+                        Menunggu instruksi untuk memulai...
                       </p>
                     )}
                   </div>
-              )}
-              {currentStatus === "failed" && (
-                <div className="pt-2">
-                  <Button variant="destructive" onClick={handleProcess} size="sm">
-                    <RefreshCcw className="mr-2 h-4 w-4" />
-                    Ulangi Proses
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
+                )}
 
-          {statusQuery.isError && (
-            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-600 font-medium">Gagal memantau status.</p>
-              <Button variant="outline" size="sm" onClick={() => statusQuery.refetch()} className="mt-2 bg-white">
-                <RefreshCcw className="mr-2 h-4 w-4" />
-                Coba Hubungkan Kembali
-              </Button>
-            </div>
-          )}
+                {currentStatus === "failed" && (
+                  <div className="pt-2">
+                    <Button
+                      variant="outline"
+                      onClick={handleProcess}
+                      size="sm"
+                      className="border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/40"
+                    >
+                      <RefreshCcw className="mr-2 h-4 w-4" />
+                      Ulangi Pembuatan Peta
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Card 3: Results */}
         {isFinished && (
-          <div className="rounded-xl border border-green-200 bg-green-50 p-6 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h2 className="text-xl font-semibold text-green-800 mb-2">ODM Selesai!</h2>
-            <p className="text-green-700 mb-6">Peta Digital telah berhasil diproses dan siap digunakan.</p>
+          <div className="rounded-xl border border-green-200 dark:border-green-800 bg-white dark:bg-gray-800 p-6 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500 transition-colors">
+            <div className="flex flex-col mb-6">
+              <h2 className="text-xl font-bold text-green-600 dark:text-green-500 flex items-center gap-2 mb-1">
+                <MapPin className="h-5 w-5" />
+                Peta Lahan Anda Sudah Siap 🌱
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Peta lahan Anda berhasil dibuat dan kini siap untuk dianalisis lebih lanjut.</p>
+            </div>
 
             {resultQuery.isLoading ? (
-              <div className="flex items-center gap-2 text-green-700">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Mengambil data hasil...</span>
+              <div className="flex flex-col items-center justify-center p-12 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+                <Loader2 className="h-10 w-10 text-green-600 dark:text-green-500 animate-spin mb-4" />
+                <span className="text-gray-600 dark:text-gray-400 font-medium">Memuat pratinjau peta...</span>
               </div>
             ) : resultQuery.isError ? (
-              <div className="space-y-4">
-                <p className="text-red-600">Gagal mengambil data hasil.</p>
-                <Button variant="outline" onClick={() => resultQuery.refetch()} size="sm">
+              <div className="p-8 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 rounded-xl text-center space-y-4 transition-colors">
+                <p className="text-red-600 dark:text-red-400 font-medium">Gagal memuat pratinjau peta.</p>
+                <Button variant="outline" onClick={() => resultQuery.refetch()} size="sm" className="bg-white dark:bg-gray-800 dark:border-gray-700">
                   <RefreshCcw className="mr-2 h-4 w-4" />
-                  Coba Lagi
+                  Coba Muat Ulang
                 </Button>
               </div>
             ) : (
               <div className="space-y-6">
                 {/* Image Preview Block */}
-                <div className="relative rounded-lg overflow-hidden border border-green-200 bg-white">
-                  {previewUrl ? (
+                <div
+                  className={cn(
+                    "relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-900 h-[450px] shadow-inner transition-colors",
+                    zoom > 1 ? (isDragging ? "cursor-grabbing" : "cursor-grab") : "cursor-default"
+                  )}
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseUp}
+                  onWheel={handleWheel}
+                >
+                  {previewUrl && !imageError ? (
                     <>
-                      {imageLoading && (
-                        <div className="aspect-video w-full bg-green-100/50 animate-pulse flex items-center justify-center">
-                          <Loader2 className="h-8 w-8 text-green-300 animate-spin" />
-                        </div>
-                      )}
-                      <div className="relative group">
-                        <div 
-                          className="overflow-hidden bg-muted/20"
-                          onMouseDown={handleMouseDown}
-                          onMouseMove={handleMouseMove}
-                          onMouseUp={handleMouseUp}
-                          onMouseLeave={handleMouseUp}
+                      <img
+                        src={fullPreviewUrl || previewUrl}
+                        alt="Pratinjau Peta"
+                        className="w-full h-full object-contain transition-transform duration-300 ease-out select-none"
+                        style={{
+                          transform: `scale(${zoom}) translate(${pos.x / zoom}px, ${pos.y / zoom}px)`,
+                        }}
+                        onError={() => setImageError(true)}
+                        onDoubleClick={handleReset}
+                      />
+
+                      {/* Interaction Controls */}
+                      <div className="absolute top-4 right-4 flex items-center gap-1 bg-white dark:bg-gray-800 shadow-lg border border-gray-100 dark:border-gray-700 rounded-xl p-1.5 z-10 transition-colors">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
+                          onClick={handleZoomIn}
+                          title="Perbesar"
                         >
-                          <img
-                            src={fullPreviewUrl || ""}
-                            alt="Orthomosaic Preview"
-                            onError={(e) => {
-                              console.log("IMG ERROR", e);
-                              setImageLoading(false);
-                            }}
-                            style={{ 
-                              transform: `translate(${pos.x}px, ${pos.y}px) scale(${zoom})`, 
-                              transformOrigin: 'center center',
-                              cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default'
-                            }}
-                            className={cn(
-                              "w-full h-auto max-h-[600px] object-contain transition-transform duration-300 ease-out select-none",
-                              imageLoading ? "opacity-0 h-0" : "opacity-100"
-                            )}
-                            onLoad={() => setImageLoading(false)}
-                            onDoubleClick={() => {
-                              setZoom(1);
-                              setPos({ x: 0, y: 0 });
-                            }}
-                          />
-                        </div>
-                        
-                        {!imageLoading && (
-                          <>
-                            <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-sm text-white px-3 py-2 rounded-lg z-10 shadow-lg border border-white/10">
-                              <div className="text-base font-semibold">
-                                Project ID: {activeId}
-                              </div>
-                            </div>
-                            
-                            <div className="absolute top-2 right-2 flex flex-col gap-1 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                              <Button 
-                                variant="secondary" 
-                                size="icon" 
-                                className="h-8 w-8 bg-black/70 hover:bg-black/90 border-none text-white shadow-xl"
-                                onClick={() => setZoom(z => Math.min(z + 0.2, 3))}
-                                title="Perbesar"
-                              >
-                                <ZoomIn className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                variant="secondary" 
-                                size="icon" 
-                                className="h-8 w-8 bg-black/70 hover:bg-black/90 border-none text-white shadow-xl"
-                                onClick={() => setZoom(z => Math.max(z - 0.2, 1))}
-                                title="Perkecil"
-                              >
-                                <ZoomOut className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                variant="secondary" 
-                                size="icon" 
-                                className="h-8 w-8 bg-black/70 hover:bg-black/90 border-none text-white shadow-xl"
-                                onClick={() => {
-                                  setZoom(1);
-                                  setPos({ x: 0, y: 0 });
-                                }}
-                                title="Reset Zoom"
-                              >
-                                <RotateCcw className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </>
-                        )}
+                          <ZoomIn className="h-5 w-5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
+                          onClick={handleZoomOut}
+                          title="Perkecil"
+                        >
+                          <ZoomOut className="h-5 w-5" />
+                        </Button>
+                        <div className="w-[1px] h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-9 px-3 text-xs font-bold text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
+                          onClick={handleReset}
+                        >
+                          <RotateCcw className="h-4 w-4 mr-1.5" />
+                          Kembali
+                        </Button>
+                      </div>
+
+                      <div className="absolute bottom-4 left-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-100 dark:border-gray-700 shadow-sm text-gray-600 dark:text-gray-400 text-[11px] px-3 py-1.5 rounded-lg pointer-events-none font-medium transition-colors">
+                        Perbesaran: <span className="text-green-600 dark:text-green-400 font-bold">{zoom.toFixed(1)}x</span> | Drag untuk menggeser
                       </div>
                     </>
                   ) : (
-                    <div className="aspect-video w-full bg-green-50 flex flex-col items-center justify-center text-green-600 p-8">
-                      <Loader2 className="h-10 w-10 mb-3 animate-spin opacity-40" />
-                      <p className="text-sm font-medium">Menunggu hasil preview...</p>
-                      <p className="text-xs opacity-60 italic">ODM sedang menyiapkan file orthophoto</p>
+                    <div className="flex flex-col items-center justify-center p-12 bg-gray-50 dark:bg-gray-900/50 border-dashed border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 rounded-xl h-full transition-colors">
+                      <AlertCircle className="h-12 w-12 mb-3 opacity-20" />
+                      <p className="font-medium text-lg">Pratinjau belum tersedia</p>
+                      <p className="text-sm">Silakan unduh file TIFF di bawah untuk melihat hasil peta lengkap.</p>
                     </div>
                   )}
                 </div>
 
-                <div className="flex flex-wrap gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {activeId && (
-                    <Button 
+                    <Button
                       onClick={handleDownload}
-                      className="bg-green-600 hover:bg-green-700 text-white shadow-lg border-none px-6"
+                      variant="outline"
+                      className="h-14 border-green-600 dark:border-green-500 text-green-600 dark:text-green-500 hover:bg-green-50 dark:hover:bg-green-900/10 font-bold text-lg rounded-xl transition-all"
                     >
-                      <Download className="mr-2 h-4 w-4" />
-                      Download Orthophoto (.tif)
+                      <Download className="mr-3 h-5 w-5" />
+                      Unduh Peta (.tif)
                     </Button>
                   )}
                   {resultImageId && (
-                    <Button asChild className="bg-green-600 hover:bg-green-700 text-white shadow-lg border-none px-6">
+                    <Button asChild className="h-14 bg-green-600 hover:bg-green-700 text-white font-bold text-lg rounded-xl shadow-lg dark:shadow-none transition-all active:scale-95">
                       <Link to={`/deteksi?image_id=${resultImageId}`}>
-                        Lanjut ke Deteksi
-                        <ChevronRight className="ml-2 h-4 w-4" />
+                        Mulai Hitung Pohon
+                        <ChevronRight className="ml-2 h-6 w-6" />
                       </Link>
                     </Button>
                   )}
@@ -664,7 +686,19 @@ const PetaDigital = () => {
         )}
 
         {projectId && (
-          <Button variant="outline" onClick={resetPipeline} className="w-full">Riset Pipeline</Button>
+          <div className="flex justify-center mt-6 pt-4 pb-12">
+            <Button
+              onClick={() => {
+                if (window.confirm("Apakah Anda yakin ingin mengulang proses? Data sebelumnya akan diganti.")) {
+                  resetPipeline();
+                }
+              }}
+              className="bg-red-600 hover:bg-red-700 text-white font-medium px-6 py-3 rounded-xl shadow-sm transition-all duration-200 flex items-center gap-2"
+            >
+              <AlertTriangle className="h-5 w-5" />
+              Mulai Ulang Proses Pemetaan
+            </Button>
+          </div>
         )}
       </div>
     </DashboardLayout>

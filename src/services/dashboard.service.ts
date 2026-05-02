@@ -1,48 +1,20 @@
 import { apiClient } from "@/api/client";
 
-export interface DashboardStats {
-  total_trees: number;
-  total_detections: number;
-  total_area_hectares: number;
-  average_accuracy: number;
-  last_detection_date: string | null;
+import { AxiosRequestConfig } from "axios";
+
+export async function getDashboardSummary(config?: AxiosRequestConfig) {
+  const res = await apiClient.get("/dashboard/summary", config);
+  return res.data?.data;
 }
 
-export interface DetectionTrend {
-  period: string;
-  count: number;
+export async function getDashboardTrends(config?: AxiosRequestConfig & { days?: number }) {
+  const days = config?.days || 7;
+  const res = await apiClient.get(`/dashboard/trends?days=${days}`, config);
+  return res.data?.data;
 }
 
-export interface LatestImage {
-  image_id: string;
-  filename: string;
-  upload_date: string;
-  preview_url?: string;
+export async function getLatestImages(config?: AxiosRequestConfig & { limit?: number }) {
+  const limit = config?.limit || 5;
+  const res = await apiClient.get(`/dashboard/latest-images?limit=${limit}`, config);
+  return res.data?.data;
 }
-
-export interface DashboardSummary {
-  stats: DashboardStats;
-  trends: DetectionTrend[];
-}
-
-export const dashboardService = {
-  getStats: async (): Promise<DashboardStats> => {
-    const response = await apiClient.get("/dashboard/stats");
-    return response.data;
-  },
-
-  getSummary: async (): Promise<DashboardSummary> => {
-    const response = await apiClient.get("/dashboard/summary");
-    return response.data;
-  },
-
-  getTrends: async (): Promise<DetectionTrend[]> => {
-    const response = await apiClient.get("/dashboard/trends");
-    return response.data;
-  },
-
-  getLatestImages: async (): Promise<LatestImage[]> => {
-    const response = await apiClient.get("/dashboard/latest-images");
-    return response.data;
-  },
-};

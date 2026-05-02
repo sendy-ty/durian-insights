@@ -60,6 +60,15 @@ export const useLogout = () => {
   return useMutation({
     mutationFn: () => authService.logout(),
     onSuccess: () => {
+      // Cleanup user-scoped reports before clearing user info
+      const currentUser: any = queryClient.getQueryData(AUTH_QUERY_KEY);
+      const userKey = currentUser?.email || currentUser?.name || "guest";
+      
+      localStorage.removeItem(`lastReport_${userKey}`);
+      localStorage.removeItem(`reportCache_${userKey}`);
+      localStorage.removeItem("lastReport");
+      localStorage.removeItem("reportCache");
+      
       localStorage.removeItem("duriancount_token");
       localStorage.removeItem("isLogin");
       localStorage.removeItem("duriancount_user");
